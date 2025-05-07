@@ -20,4 +20,7 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
 
     @Query("SELECT SUM(r.amount) FROM Reward r WHERE r.userId = :userId")
     Integer getCurrentBalanceByUserId(String userId);
+
+    @Query("SELECT SUM(r.amount) FROM Reward r")
+    Integer sumAllIssued();
 }

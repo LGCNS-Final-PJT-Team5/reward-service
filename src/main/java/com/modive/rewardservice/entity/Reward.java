@@ -1,5 +1,7 @@
 package com.modive.rewardservice.entity;
 
+import com.modive.rewardservice.entity.enums.RewardReason;
+import com.modive.rewardservice.entity.enums.RewardType;
 import lombok.*;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -20,12 +22,15 @@ public class Reward {
 
     private Integer amount; // 씨앗 양 (양수: 적립, 음수: 사용)
 
-    private String type; // "EARN" 또는 "USE"
+    @Enumerated(EnumType.STRING)
+    private RewardType type;  // 🔄 enum으로 변경
 
-    private String reason; // "DRIVING_RECORD", "EVENT", "PURCHASE" 등
+    @Enumerated(EnumType.STRING)
+    private RewardReason reason;  // 🔄 enum으로 변경
 
     private String description; // "주행 점수 보상", "주행 이벤트 보상", "할인 쿠폰 구매" 등
 
+    @Column(updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

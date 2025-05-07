@@ -2,6 +2,8 @@ package com.modive.rewardservice.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.modive.rewardservice.entity.Reward;
+import com.modive.rewardservice.entity.enums.RewardReason;
+import com.modive.rewardservice.entity.enums.RewardType;
 import com.modive.rewardservice.repository.RewardRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -62,8 +64,8 @@ public class RewardControllerIntegrationTest {
         rewardRepository.save(Reward.builder()
                 .userId(userId)
                 .amount(50)
-                .type("EARN")
-                .reason("DRIVING")
+                .type(RewardType.EARN)
+                .reason(RewardReason.DRIVING_RECORD)
                 .description("초기 적립")
                 .build());
 

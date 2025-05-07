@@ -1,31 +1,28 @@
 package com.modive.common;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
 public class Response<T> {
+    private int status;       // ✅ 추가
     private boolean success;
     private String message;
     private T data;
 
-    public static <T> Response<T> success(T data) {
+    public static <T> Response<T> success(int status, String message, T data) {
         return Response.<T>builder()
+                .status(status)
                 .success(true)
-                .message("성공")
+                .message(message)
                 .data(data)
                 .build();
     }
 
-    public static <T> Response<T> error(String message) {
+    public static <T> Response<T> error(int status, String message) {
         return Response.<T>builder()
+                .status(status)
                 .success(false)
                 .message(message)
                 .data(null)
