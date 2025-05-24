@@ -1,174 +1,123 @@
 package com.modive.rewardservice.service;
 
-import com.modive.rewardservice.dto.*;
-import com.modive.rewardservice.entity.Reward;
-import com.modive.rewardservice.entity.enums.RewardReason;
-import com.modive.rewardservice.entity.enums.RewardType;
+import com.modive.rewardservice.domain.RewardBalance;
+import com.modive.rewardservice.domain.RewardType;
+import com.modive.rewardservice.domain.*;
+import com.modive.rewardservice.dto.request.RewardEarnRequest;
+import com.modive.rewardservice.dto.request.ScoreInfo;
+import com.modive.rewardservice.repository.RewardBalanceRepository;
 import com.modive.rewardservice.repository.RewardRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+
 
 @Service
 @RequiredArgsConstructor
 public class RewardService {
 
     private final RewardRepository rewardRepository;
+    private final RewardBalanceRepository rewardBalanceRepository;
 
+    /**씨앗적립처리**/
     @Transactional
-    public Reward earnReward(RewardEarnRequest request) {
-        if (request.getAmount() <= 0) {
-            throw new IllegalArgumentException("적립 씨앗은 0보다 커야 합니다.");
+    public void calculateAndEarn(RewardEarnRequest request) {
+        Long userId = request.getUserId();
+        LocalDate today = LocalDate.now();
+
+        // ✅ 1. 주행 중 리워드 (주행 시간 >= 10분)
+        if (request.getDrivingTime() != null && request.getDrivingTime() >= 10) {
+            earn(userId, 1L, "주행 중 이벤트 미감지 보상");
         }
 
-        Reward reward = Reward.builder()
-                .userId(request.getUserId())
-                .amount(request.getAmount())
-                .type(RewardType.EARN)
-                .reason(request.getReason())
-                .description(request.getDescription())
-                .build();
+        // ✅ 2. 종합 점수 리워드 (score ≥ 50, 하루 2회까지)
+        if (request.getScore() != null && request.getScore() >= 50) {
+            LocalDateTime startOfDay = today.atStartOfDay();
+            LocalDateTime endOfDay = today.atTime(23, 59, 59);
 
-        return rewardRepository.save(reward);
+            long countToday = rewardRepository.countByUserIdAndDescriptionLikeAndDateRange(
+                    userId, "종합 점수 보상%", startOfDay, endOfDay
+            );
+
+            if (countToday < 2) {
+                long seed = calculateScoreReward(request.getScore());
+                if (seed > 0) {
+                    earn(userId, seed, "종합 점수 보상: " + request.getScore() + "점");
+                }
+            }
+        }
+
+        // ✅ 3. MoBTI 향상 리워드
+        String lastMbti = determineMbtiType(request.getLastScore());
+        String currentMbti = determineMbtiType(request.getCurrentScore());
+
+        if (lastMbti != null && currentMbti != null && !lastMbti.equals(currentMbti)) {
+            earn(userId, 5L, "MoBTI 향상 보상: " + lastMbti + " → " + currentMbti);
+        }
     }
 
-    @Transactional
-    public Reward useReward(String userId, Integer amount, RewardReason reason, String description) {
-        if (amount <= 0) {
-            throw new IllegalArgumentException("사용 씨앗은 0보다 커야 합니다.");
-        }
+    private long calculateScoreReward(int score) {
+        return switch (score / 10) {
+            case 10, 9 -> 5;
+            case 8 -> 4;
+            case 7 -> 3;
+            case 6 -> 2;
+            case 5 -> 1;
+            default -> 0;
+        };
+    }
 
-        Integer balance = rewardRepository.getCurrentBalanceByUserId(userId);
-        if (balance == null) balance = 0;
+    private String determineMbtiType(ScoreInfo score) {
+        if (score == null) return null;
 
-        if (balance < amount) {
-            throw new IllegalArgumentException("사용 가능한 씨앗이 부족합니다.");
-        }
+        String eco = score.getCarbon() != null && score.getCarbon() >= 51 ? "E" : "H";       // 에코 vs 헤비
+        String safety = score.getSafety() != null && score.getSafety() >= 51 ? "A" : "B";    // 공격 vs 방어
+        String accident = score.getAccident() != null && score.getAccident() >= 51 ? "M" : "D"; // 민감 vs 둔감
+        String focus = score.getFocus() != null && score.getFocus() >= 51 ? "C" : "S";       // 집중 vs 산만
+
+        return eco + safety + accident + focus;
+    }
+
+    private Reward earn(Long userId, Long amount, String description) {
+        RewardBalance rewardBalance = rewardBalanceRepository.findByUserId(userId)
+                .orElseGet(() -> RewardBalance.builder()
+                        .userId(userId)
+                        .balance(0L)
+                        .build());
+
+        rewardBalance.addBalance(amount);
+        rewardBalance = rewardBalanceRepository.save(rewardBalance);
 
         Reward reward = Reward.builder()
                 .userId(userId)
-                .amount(-amount)
-                .type(RewardType.USE)
-                .reason(reason)
+                .amount(amount)
+                .type(RewardType.EARNED)
                 .description(description)
+                .balanceSnapshot(rewardBalance.getBalance())
+                .rewardBalance(rewardBalance)
                 .build();
 
         return rewardRepository.save(reward);
     }
 
+
+    /**사용자 현재 씨앗 잔액 조회**/
     @Transactional(readOnly = true)
-    public RewardSummaryDTO getRewardSummary(String userId) {
-        Integer earnedSeeds = rewardRepository.getTotalEarnedByUserId(userId);
-        if (earnedSeeds == null) earnedSeeds = 0;
-
-        Integer usedSeeds = rewardRepository.getTotalUsedByUserId(userId);
-        if (usedSeeds == null) usedSeeds = 0;
-
-        Integer availableSeeds = earnedSeeds - usedSeeds;
-
-        List<Reward> rewardEntities = rewardRepository.findByUserIdOrderByCreatedAtDesc(userId);
-        List<RewardHistoryDTO> historyList = new ArrayList<>();
-        Integer runningBalance = 0;
-
-        for (Reward entity : rewardEntities) {
-            runningBalance += entity.getAmount();
-
-            RewardHistoryDTO dto = RewardHistoryDTO.builder()
-                    .id(entity.getId())
-                    .description(entity.getDescription())
-                    .type(entity.getAmount() > 0 ? "적립" : "사용")
-                    .amount(Math.abs(entity.getAmount()))
-                    .balance(runningBalance)
-                    .date(entity.getCreatedAt())
-                    .build();
-
-            historyList.add(dto);
-        }
-
-        return RewardSummaryDTO.builder()
-                .availableSeeds(availableSeeds)
-                .totalUsedSeeds(usedSeeds)
-                .history(historyList)
-                .build();
+    public Long getBalance(Long userId) { //현재잔액 확인
+        return rewardBalanceRepository.findByUserId(userId)
+                .map(RewardBalance::getBalance)
+                .orElse(0L);
     }
 
+    /**사용자별 씨앗 적립 내영 페이징 조회**/
     @Transactional(readOnly = true)
-    public int getUserTotal(String userId) {
-        Integer total = rewardRepository.getCurrentBalanceByUserId(userId);
-        return total != null ? total : 0;
-    }
-
-    @Transactional(readOnly = true)
-    public List<Reward> getUserHistory(String userId) {
-        return rewardRepository.findByUserIdOrderByCreatedAtDesc(userId);
-    }
-
-    @Transactional(readOnly = true)
-    public TotalIssuedDTO getTotalIssued() {
-        Integer total = rewardRepository.sumAllIssued();
-        if (total == null) total = 0;
-        return new TotalIssuedDTO(total, 3.2); // 추후 변화율 계산 로직 추가
-    }
-
-    @Transactional(readOnly = true)
-    public Map<String, Object> getMonthlyIssuedWithChangeRate() {
-        return Map.of("value", 20700, "changeRate", 12.5);
-    }
-
-    @Transactional(readOnly = true)
-    public Map<String, Object> getDailyAverageIssuedWithChangeRate() {
-        return Map.of("value", 730, "changeRate", 5.8);
-    }
-
-    @Transactional(readOnly = true)
-    public Map<String, Object> getPerUserAverageIssuedWithChangeRate() {
-        return Map.of("value", 158, "changeRate", 2.1);
-    }
-
-    @Transactional(readOnly = true)
-    public List<Map<String, Object>> getIssuedByReasonFormatted() {
-        return List.of(
-                Map.of("reason", "종합점수", "count", 1200, "ratio", 25),
-                Map.of("reason", "주행 점수(10분)", "count", 3400, "ratio", 40)
-        );
-    }
-
-    @Transactional(readOnly = true)
-    public List<MonthlyRewardStatsDTO> getMonthlyStats(int year, int month) {
-        return List.of(
-                new MonthlyRewardStatsDTO("2025-05", 15000),
-                new MonthlyRewardStatsDTO("2025-06", 18000)
-        );
-    }
-
-    @Transactional(readOnly = true)
-    public List<RewardHistorySimpleDTO> getAllHistorySimple(int page, int pageSize) {
-        return List.of(
-                new RewardHistorySimpleDTO("SEED_1024", "user1@example.com"),
-                new RewardHistorySimpleDTO("SEED_1023", "user2@example.com")
-        );
-    }
-
-    @Transactional(readOnly = true)
-    public Reward getRewardById(Long rewardId) {
-        return rewardRepository.findById(rewardId)
-                .orElseThrow(() -> new EntityNotFoundException("리워드 ID를 찾을 수 없습니다: " + rewardId));
-    }
-
-    @Transactional(readOnly = true)
-    public List<SearchRewardResultDTO> searchReward(int searchKeyword) {
-        return List.of(new SearchRewardResultDTO("SEED_1024", "user1@example.com"));
-    }
-
-    @Transactional(readOnly = true)
-    public List<Reward> getAllHistory() {
-        return rewardRepository.findAll();
+    public Page<Reward> getRewardHistory(Long userId, Pageable pageable) {
+        return rewardRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
     }
 }
 

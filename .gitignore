@@ -5,6 +5,10 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+# 로컬 설정 파일 제외
+src/main/resources/application-local.yml
+
+
 ### STS ###
 .apt_generated
 .classpath
