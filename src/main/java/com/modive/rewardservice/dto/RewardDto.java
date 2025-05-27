@@ -25,9 +25,6 @@ public class RewardDto {
         private Long driveId;
         private Integer score;
 
-        @JsonProperty("10분 이상 러닝 횟수 (오늘)")
-        private Integer tenMinuteRunCount;
-
         @JsonProperty("주행 시간")
         private Integer drivingTime;
 
@@ -40,7 +37,6 @@ public class RewardDto {
                     .userId(userId)
                     .driveId(driveId)
                     .score(score)
-                    .tenMinuteRunCount(tenMinuteRunCount)
                     .drivingTime(drivingTime)
                     .lastScore(lastScore)
                     .currentScore(currentScore)
