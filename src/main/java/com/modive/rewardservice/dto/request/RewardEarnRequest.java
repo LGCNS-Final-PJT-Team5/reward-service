@@ -15,7 +15,6 @@ public class RewardEarnRequest {
     private Long userId;
     private Long driveId;
     private Integer score;
-    private Integer tenMinuteRunCount;
     private Integer drivingTime;
 
     private ScoreInfo lastScore;
