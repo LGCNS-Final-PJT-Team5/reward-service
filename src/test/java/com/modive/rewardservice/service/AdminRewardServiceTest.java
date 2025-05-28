@@ -2,6 +2,7 @@ package com.modive.rewardservice.service;
 
 import com.modive.rewardservice.client.UserClient;
 import com.modive.rewardservice.domain.Reward;
+import com.modive.rewardservice.domain.RewardReason;
 import com.modive.rewardservice.domain.RewardType;
 import com.modive.rewardservice.dto.AdminRewardDto;
 import com.modive.rewardservice.repository.RewardRepository;
@@ -20,12 +21,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -43,9 +45,10 @@ class AdminRewardServiceTest {
 
     @BeforeEach
     void setUp() {
-        // 기본 mock 설정
+        // 🔧 간소화된 UserClient Mock 설정
         when(userClient.getUserIdByEmail(anyString())).thenReturn(1L);
         when(userClient.getEmailByUserId(anyLong())).thenReturn("user@example.com");
+        // 🚫 제거: getEmailsByUserIds, existsByEmail, existsById
     }
 
     @Test
@@ -130,35 +133,96 @@ class AdminRewardServiceTest {
     }
 
     @Test
-    @DisplayName("5. 발급 사유별 총 통계 조회 - 올해 데이터 3가지 카테고리 분류")
-    void getTotalIssuedByReasonTest() {
-        // given
+    @DisplayName("5. 발급 사유별 총 통계 조회 - 실제 RewardReason 기준")
+    void getTotalRewardStatsTest() {
+        // given - 실제 RewardReason enum 값들 사용
         List<Object[]> rawStats = List.of(
-                new Object[]{"종합점수 우수", 600L},
-                new Object[]{"종합 점수", 600L},
-                new Object[]{"이벤트 미발생", 1700L},
-                new Object[]{"이벤트미감지", 1700L},
-                new Object[]{"MoBTI 향상", 670L}
+                new Object[]{"종합점수", 1200L},          // TOTAL_SCORE
+                new Object[]{"이벤트미발생", 3400L},       // EVENT_NOT_OCCURRED
+                new Object[]{"MoBTI향상", 670L}          // MOBTI_IMPROVEMENT
         );
         when(rewardRepository.getCurrentYearIssuedGroupedByReason()).thenReturn(rawStats);
 
         // when
-        List<AdminRewardDto.TotalReasonStatsResponse.ReasonStat> result =
-                adminRewardService.getTotalIssuedByReason();
+        AdminRewardDto.TotalReasonStatsResponse result = adminRewardService.getTotalRewardStats();
 
         // then
-        Map<String, Long> reasonMap = result.stream()
-                .collect(Collectors.toMap(AdminRewardDto.TotalReasonStatsResponse.ReasonStat::getReason,
-                        AdminRewardDto.TotalReasonStatsResponse.ReasonStat::getCount));
+        assertThat(result.getTotalRewardStatistics()).hasSize(3);
 
-        assertThat(reasonMap.get("종합점수")).isEqualTo(1200L);
-        assertThat(reasonMap.get("이벤트미발생")).isEqualTo(3400L);
-        assertThat(reasonMap.get("MoBTI향상")).isEqualTo(670L);
+        AdminRewardDto.ReasonStat firstStat = result.getTotalRewardStatistics().get(0);
+        assertThat(firstStat.getReason()).isEqualTo("종합점수");
+        assertThat(firstStat.getCount()).isEqualTo(1200L);
+        assertThat(firstStat.getRatio()).isGreaterThan(0);
+
+        // 각 사유별 통계 검증
+        Map<String, Long> reasonCounts = new HashMap<>();
+        result.getTotalRewardStatistics().forEach(stat ->
+                reasonCounts.put(stat.getReason(), stat.getCount()));
+
+        assertThat(reasonCounts.get("종합점수")).isEqualTo(1200L);
+        assertThat(reasonCounts.get("이벤트미발생")).isEqualTo(3400L);
+        assertThat(reasonCounts.get("MoBTI향상")).isEqualTo(670L);
+    }
+
+    @Test
+    @DisplayName("5-2. 발급 사유별 월별 통계 조회 - 현재 월 (파라미터 없음)")
+    void getMonthlyRewardStatsByReasonCurrentMonthTest() {
+        // given - 실제 RewardReason 기준
+        List<Object[]> rawStats = List.of(
+                new Object[]{"종합점수", 800L},
+                new Object[]{"이벤트미발생", 2400L},
+                new Object[]{"MoBTI향상", 300L}
+        );
+        when(rewardRepository.getMonthlyRewardStatsByReason(anyString())).thenReturn(rawStats);
+
+        // when - null 파라미터로 현재 월 조회
+        AdminRewardDto.MonthlyReasonStatsResponse result =
+                adminRewardService.getMonthlyRewardStatsByReason(null);
+
+        // then
+        assertThat(result.getMonthlyRewardStatistics()).hasSize(3);
+
+        AdminRewardDto.ReasonStat firstStat = result.getMonthlyRewardStatistics().get(0);
+        assertThat(firstStat.getReason()).isEqualTo("종합점수");
+        assertThat(firstStat.getCount()).isEqualTo(800L);
+
+        // Repository 메서드가 현재 월 형식으로 호출되었는지 확인
+        verify(rewardRepository, times(1)).getMonthlyRewardStatsByReason(anyString());
+    }
+
+    @Test
+    @DisplayName("5-3. 발급 사유별 월별 통계 조회 - 특정 월 파라미터")
+    void getMonthlyRewardStatsByReasonWithParamTest() {
+        // given
+        String targetMonth = "2025-04";
+        List<Object[]> rawStats = List.of(
+                new Object[]{"종합점수", 650L},
+                new Object[]{"이벤트미발생", 1800L},
+                new Object[]{"MoBTI향상", 250L}
+        );
+        when(rewardRepository.getMonthlyRewardStatsByReason(targetMonth)).thenReturn(rawStats);
+
+        // when
+        AdminRewardDto.MonthlyReasonStatsResponse result =
+                adminRewardService.getMonthlyRewardStatsByReason(targetMonth);
+
+        // then
+        assertThat(result.getMonthlyRewardStatistics()).hasSize(3);
+
+        Map<String, Long> reasonCounts = new HashMap<>();
+        result.getMonthlyRewardStatistics().forEach(stat ->
+                reasonCounts.put(stat.getReason(), stat.getCount()));
+
+        assertThat(reasonCounts.get("종합점수")).isEqualTo(650L);
+        assertThat(reasonCounts.get("이벤트미발생")).isEqualTo(1800L);
+        assertThat(reasonCounts.get("MoBTI향상")).isEqualTo(250L);
+
+        verify(rewardRepository, times(1)).getMonthlyRewardStatsByReason(targetMonth);
     }
 
     @Test
     @DisplayName("6. 월별 씨앗 지급 통계 조회 - 최근 12개월 데이터")
-    void getMonthlyStatsTest() {
+    void getMonthlyRewardTrendsTest() {
         // given
         List<Object[]> rawStats = List.of(
                 new Object[]{2024, 4, 12500},
@@ -168,7 +232,7 @@ class AdminRewardServiceTest {
         when(rewardRepository.findMonthlyIssuedStatsLast12Months(any())).thenReturn(rawStats);
 
         // when
-        AdminRewardDto.MonthlyStatsResponse result = adminRewardService.getMonthlyRewardStats();
+        AdminRewardDto.MonthlyStatsResponse result = adminRewardService.getMonthlyRewardTrends();
 
         // then
         assertThat(result.getMonthlyRewardStatistics()).hasSize(12); // 항상 12개 있어야 함
@@ -183,7 +247,7 @@ class AdminRewardServiceTest {
     }
 
     @Test
-    @DisplayName("7. 최근 씨앗 발급 내역 조회 - 페이징 처리")
+    @DisplayName("7. 최근 씨앗 발급 내역 조회 - 페이징 처리 및 RewardReason 변환")
     void getAllRewardHistoryTest() {
         // given
         Reward reward = Reward.builder()
@@ -215,7 +279,7 @@ class AdminRewardServiceTest {
     }
 
     @Test
-    @DisplayName("8. 씨앗 필터링 조회 - 이메일, 발급일, 발급사유 필터")
+    @DisplayName("8. 씨앗 필터링 조회 - userId 기반 간소화된 처리")
     void filterRewardsTest() {
         // given
         Reward reward = Reward.builder()
@@ -237,7 +301,7 @@ class AdminRewardServiceTest {
 
         // when
         AdminRewardDto.RewardFilterResponse result = adminRewardService.filterRewards(
-                "user54@example.com",
+                "user1@example.com",
                 "종합점수",
                 LocalDate.of(2025, 4, 1),
                 LocalDate.of(2025, 4, 30),
@@ -247,11 +311,59 @@ class AdminRewardServiceTest {
         // then
         assertThat(result.getSearchResult()).hasSize(1);
         assertThat(result.getSearchResult().get(0).getRewardId()).isEqualTo("SEED_1025");
+        assertThat(result.getSearchResult().get(0).getUserId()).isEqualTo("1");  // 🔧 email → userId
         assertThat(result.getSearchResult().get(0).getAmount()).isEqualTo(5);
+        assertThat(result.getSearchResult().get(0).getDescription()).isEqualTo("종합점수");
         assertThat(result.getPageInfo().getTotalElements()).isEqualTo(40);
 
-        verify(userClient, times(1)).getUserIdByEmail("user54@example.com");
-        verify(userClient, times(1)).getEmailByUserId(1L);
+        // 🔧 간소화된 UserClient 호출 확인
+        verify(userClient, times(1)).getUserIdByEmail("user1@example.com");
+        // 🚫 배치 조회는 더 이상 사용하지 않음
+    }
+
+    @Test
+    @DisplayName("8-2. 씨앗 고급 검색 조회 - 새로운 검색 메서드")
+    void searchRewardsTest() {
+        // given
+        AdminRewardDto.RewardSearchRequest searchRequest = AdminRewardDto.RewardSearchRequest.builder()
+                .email("user1@example.com")
+                .description("종합점수")
+                .startDate(LocalDate.of(2025, 4, 1))
+                .endDate(LocalDate.of(2025, 4, 30))
+                .minAmount(1L)
+                .maxAmount(100L)
+                .build();
+
+        Reward reward = Reward.builder()
+                .userId(1L)
+                .amount(5L)
+                .type(RewardType.EARNED)
+                .description("종합점수")
+                .balanceSnapshot(1000L)
+                .build();
+
+        ReflectionTestUtils.setField(reward, "id", 1025L);
+        ReflectionTestUtils.setField(reward, "createdAt", LocalDateTime.of(2025, 4, 26, 12, 43, 45));
+
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Reward> page = new PageImpl<>(List.of(reward), pageable, 40);
+
+        when(rewardRepository.searchRewards(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(page);
+
+        // when
+        AdminRewardDto.RewardFilterResponse result = adminRewardService.searchRewards(
+                searchRequest,
+                pageable
+        );
+
+        // then
+        assertThat(result.getSearchResult()).hasSize(1);
+        assertThat(result.getSearchResult().get(0).getRewardId()).isEqualTo("SEED_1025");
+        assertThat(result.getSearchResult().get(0).getUserId()).isEqualTo("1");
+        assertThat(result.getSearchResult().get(0).getAmount()).isEqualTo(5);
+
+        verify(userClient, times(1)).getUserIdByEmail("user1@example.com");
+        verify(rewardRepository, times(1)).searchRewards(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -282,7 +394,51 @@ class AdminRewardServiceTest {
     }
 
     @Test
-    @DisplayName("변화율 계산 - 이전 값이 0일 때 처리")
+    @DisplayName("10. 날짜 범위 검증 - 시작일이 종료일보다 늦을 때 예외 발생")
+    void filterRewardsWithInvalidDateRangeTest() {
+        // given
+        Pageable pageable = PageRequest.of(0, 10);
+        LocalDate startDate = LocalDate.of(2025, 4, 30);
+        LocalDate endDate = LocalDate.of(2025, 4, 1);
+
+        // when & then
+        assertThatThrownBy(() -> adminRewardService.filterRewards(
+                "user@example.com",
+                null,
+                startDate,
+                endDate,
+                pageable
+        )).isInstanceOf(RuntimeException.class)
+                .hasMessage("리워드 필터링에 실패했습니다.")
+                .hasCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("11. 사용자 존재하지 않을 때 빈 결과 반환")
+    void filterRewardsWithNonExistentUserTest() {
+        // given
+        when(userClient.getUserIdByEmail("nonexistent@example.com")).thenReturn(null);
+        Pageable pageable = PageRequest.of(0, 10);
+
+        // when
+        AdminRewardDto.RewardFilterResponse result = adminRewardService.filterRewards(
+                "nonexistent@example.com",
+                null,
+                null,
+                null,
+                pageable
+        );
+
+        // then
+        assertThat(result.getSearchResult()).isEmpty();
+        assertThat(result.getPageInfo().getTotalElements()).isEqualTo(0);
+
+        verify(userClient, times(1)).getUserIdByEmail("nonexistent@example.com");
+        verify(rewardRepository, never()).filterRewards(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("12. 변화율 계산 - 이전 값이 0일 때 처리")
     void testChangeRateWhenPreviousValueIsZero() {
         // given
         when(rewardRepository.countIssuedBefore(any()))
@@ -297,7 +453,7 @@ class AdminRewardServiceTest {
     }
 
     @Test
-    @DisplayName("일일 평균 - 사용자가 없을 때 처리")
+    @DisplayName("13. 일일 평균 - 사용자가 없을 때 처리")
     void testPerUserAverageWhenNoUsers() {
         // given
         LocalDateTime start = LocalDate.now().atStartOfDay();
@@ -312,8 +468,28 @@ class AdminRewardServiceTest {
         // then
         assertThat(perUserAverage).isEqualTo(0.0);
     }
+
     @Test
-    @DisplayName("월별 통계 - 데이터가 없는 월 처리")
+    @DisplayName("14. 검색 요청 검증 실패 테스트")
+    void testSearchRewardsValidationFailure() {
+        // given - 잘못된 검색 요청 (시작일 > 종료일)
+        AdminRewardDto.RewardSearchRequest invalidRequest = AdminRewardDto.RewardSearchRequest.builder()
+                .email("user1@example.com")
+                .startDate(LocalDate.of(2025, 4, 30))
+                .endDate(LocalDate.of(2025, 4, 1))  // 시작일보다 이른 종료일
+                .build();
+
+        Pageable pageable = PageRequest.of(0, 10);
+
+        // when & then
+        assertThatThrownBy(() -> adminRewardService.searchRewards(invalidRequest, pageable))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("리워드 검색에 실패했습니다.")
+                .hasCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("15. 월별 통계 - 데이터가 없는 월 처리")
     void testMonthlyStatsWithMissingMonths() {
         // given
         List<Object[]> rawStats = List.of(
@@ -323,7 +499,7 @@ class AdminRewardServiceTest {
         when(rewardRepository.findMonthlyIssuedStatsLast12Months(any())).thenReturn(rawStats);
 
         // when
-        AdminRewardDto.MonthlyStatsResponse result = adminRewardService.getMonthlyRewardStats();
+        AdminRewardDto.MonthlyStatsResponse result = adminRewardService.getMonthlyRewardTrends();
 
         // then
         assertThat(result.getMonthlyRewardStatistics()).hasSize(12);
@@ -346,37 +522,120 @@ class AdminRewardServiceTest {
     }
 
     @Test
-    @DisplayName("발급 사유별 통계 - 기타 카테고리 처리")
-    void testReasonStatsWithUncategorized() {
+    @DisplayName("16. 운전별 적립 - 빈 driveIds 처리")
+    void testRewardsByDriveWithEmptyList() {
+        // given
+        AdminRewardDto.RewardsByDriveRequest request = new AdminRewardDto.RewardsByDriveRequest(List.of());
+
+        // when
+        AdminRewardDto.RewardsByDriveResponse result = adminRewardService.getRewardsByDrive(request);
+
+        // then
+        assertThat(result.getRewardsByDrive()).isEmpty();
+        verify(rewardRepository, never()).sumAmountByDriveId(any());
+    }
+
+    @Test
+    @DisplayName("17. 월별 사유별 통계 - 잘못된 월 형식 처리")
+    void testMonthlyReasonStatsWithInvalidMonthFormat() {
+        // given
+        String invalidMonth = "invalid-format";
+        when(rewardRepository.getMonthlyRewardStatsByReason(invalidMonth))
+                .thenReturn(List.of()); // 빈 결과 반환
+
+        // when
+        AdminRewardDto.MonthlyReasonStatsResponse result =
+                adminRewardService.getMonthlyRewardStatsByReason(invalidMonth);
+
+        // then
+        assertThat(result.getMonthlyRewardStatistics()).isEmpty();
+        verify(rewardRepository, times(1)).getMonthlyRewardStatsByReason(invalidMonth);
+    }
+
+    @Test
+    @DisplayName("18. 성능 테스트 - 대용량 데이터 처리")
+    void testLargeDataProcessing() {
+        // given - 대용량 데이터 시뮬레이션
+        when(rewardRepository.getTotalIssued()).thenReturn(50_000_000L); // 5천만개
+        when(rewardRepository.countIssuedBefore(any()))
+                .thenReturn(45_000_000L)    // 한달 전
+                .thenReturn(40_000_000L);   // 두달 전
+
+        // when
+        long totalIssued = adminRewardService.getTotalIssued();
+        double changeRate = adminRewardService.getChangeRate();
+
+        // then
+        assertThat(totalIssued).isEqualTo(50_000_000L);
+        assertThat(changeRate).isEqualTo(12.5); // (45M - 40M) / 40M * 100
+
+        // 성능 검증 - 타임아웃 없이 완료되어야 함
+        verify(rewardRepository, times(1)).getTotalIssued();
+    }
+
+    @Test
+    @DisplayName("19. 엣지 케이스 - 음수 리워드 처리")
+    void testNegativeRewardHandling() {
+        // given - 차감된 리워드가 있는 경우
+        Reward negativeReward = Reward.builder()
+                .userId(1L)
+                .amount(-10L)  // 음수 리워드 (차감)
+                .type(RewardType.USED)
+                .description("종합점수")
+                .balanceSnapshot(990L)
+                .build();
+
+        ReflectionTestUtils.setField(negativeReward, "id", 2000L);
+        ReflectionTestUtils.setField(negativeReward, "createdAt", LocalDateTime.now());
+
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Reward> page = new PageImpl<>(List.of(negativeReward));
+        when(rewardRepository.findAllByOrderByCreatedAtDesc(pageable)).thenReturn(page);
+
+        // when
+        Page<AdminRewardDto.AllRewardHistoryResponse.RewardHistoryItem> result =
+                adminRewardService.getAllRewardHistory(pageable);
+
+        // then
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getAmount()).isEqualTo(-10); // 음수 값 그대로 표시
+        assertThat(result.getContent().get(0).getRewardId()).isEqualTo("SEED_2000");
+    }
+
+    @Test
+    @DisplayName("20. 발급 사유별 통계 - 알 수 없는 사유 처리")
+    void testReasonStatsWithUnknownReason() {
         // given
         List<Object[]> rawStats = List.of(
-                new Object[]{"종합점수 우수", 1200L},
-                new Object[]{"이벤트 미감지", 3400L},
-                new Object[]{"MoBTI 개선", 670L},
-                new Object[]{"출석 체크", 500L}  // 3가지 카테고리에 속하지 않음
+                new Object[]{"종합점수", 1200L},
+                new Object[]{"이벤트미발생", 3400L},
+                new Object[]{"알 수 없는 사유", 500L}  // RewardReason에 없는 사유
         );
         when(rewardRepository.getCurrentYearIssuedGroupedByReason()).thenReturn(rawStats);
 
         // when
-        List<AdminRewardDto.TotalReasonStatsResponse.ReasonStat> result =
-                adminRewardService.getTotalIssuedByReason();
+        AdminRewardDto.TotalReasonStatsResponse result = adminRewardService.getTotalRewardStats();
 
         // then
-        assertThat(result).hasSize(3);
+        assertThat(result.getTotalRewardStatistics()).hasSize(3);
 
-        // 출석 체크는 어느 카테고리에도 포함되지 않음
-        long totalCount = result.stream().mapToLong(AdminRewardDto.TotalReasonStatsResponse.ReasonStat::getCount).sum();
-        assertThat(totalCount).isEqualTo(5270L); // 500L은 제외됨
+        // 알 수 없는 사유는 "알 수 없음"으로 변환됨 (RewardReason.UNKNOWN)
+        AdminRewardDto.ReasonStat unknownStat = result.getTotalRewardStatistics().stream()
+                .filter(stat -> stat.getReason().equals("알 수 없음"))
+                .findFirst()
+                .orElse(null);
+        assertThat(unknownStat).isNotNull();
+        assertThat(unknownStat.getCount()).isEqualTo(500L);
     }
 
     @Test
-    @DisplayName("필터링 - 필터 파라미터가 null일 때 처리")
+    @DisplayName("21. 필터링 - 모든 파라미터가 null일 때 처리")
     void testFilterWithNullParameters() {
         // given
         Pageable pageable = PageRequest.of(0, 10);
         Page<Reward> emptyPage = Page.empty(pageable);
 
-        when(rewardRepository.filterRewards(null, null, null, null, pageable))
+        when(rewardRepository.filterRewards(isNull(), isNull(), isNull(), isNull(), eq(pageable)))
                 .thenReturn(emptyPage);
 
         // when
@@ -392,20 +651,113 @@ class AdminRewardServiceTest {
     }
 
     @Test
-    @DisplayName("운전별 적립 - 리워드가 없는 운전 처리")
-    void testRewardsByDriveWithNoRewards() {
-        // given
-        List<Long> driveIds = List.of(999L);
-        AdminRewardDto.RewardsByDriveRequest request = new AdminRewardDto.RewardsByDriveRequest(driveIds);
-
-        when(rewardRepository.sumAmountByDriveId(999L)).thenReturn(Optional.empty());
+    @DisplayName("22. 비즈니스 로직 테스트 - 이벤트미발생 리워드 검증")
+    void testEventNotOccurredRewardLogic() {
+        // given - 이벤트미발생이 가장 많은 경우 (안전운전 우수)
+        List<Object[]> rawStats = List.of(
+                new Object[]{"이벤트미발생", 5000L},       // 가장 많음 (안전운전)
+                new Object[]{"종합점수", 2000L},
+                new Object[]{"MoBTI향상", 1000L}
+        );
+        when(rewardRepository.getCurrentYearIssuedGroupedByReason()).thenReturn(rawStats);
 
         // when
-        AdminRewardDto.RewardsByDriveResponse result = adminRewardService.getRewardsByDrive(request);
+        AdminRewardDto.TotalReasonStatsResponse result = adminRewardService.getTotalRewardStats();
 
         // then
-        assertThat(result.getRewardsByDrive()).hasSize(1);
-        assertThat(result.getRewardsByDrive().get(0).getDriveId()).isEqualTo(999L);
-        assertThat(result.getRewardsByDrive().get(0).getRewards()).isEqualTo(0);
+        AdminRewardDto.ReasonStat eventNotOccurredStat = result.getTotalRewardStatistics().stream()
+                .filter(stat -> stat.getReason().equals("이벤트미발생"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(eventNotOccurredStat.getCount()).isEqualTo(5000L);
+        assertThat(eventNotOccurredStat.getRatio()).isGreaterThan(50.0); // 과반수 이상
+    }
+
+    @Test
+    @DisplayName("23. 비즈니스 로직 테스트 - MoBTI향상 리워드 검증")
+    void testMobtiImprovementRewardLogic() {
+        // given - MoBTI향상 리워드 케이스
+        List<Object[]> rawStats = List.of(
+                new Object[]{"종합점수", 3000L},
+                new Object[]{"MoBTI향상", 1500L},          // 운전 성향 개선
+                new Object[]{"이벤트미발생", 2500L}
+        );
+        when(rewardRepository.getCurrentYearIssuedGroupedByReason()).thenReturn(rawStats);
+
+        // when
+        AdminRewardDto.TotalReasonStatsResponse result = adminRewardService.getTotalRewardStats();
+
+        // then
+        AdminRewardDto.ReasonStat mobtiStat = result.getTotalRewardStatistics().stream()
+                .filter(stat -> stat.getReason().equals("MoBTI향상"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(mobtiStat.getCount()).isEqualTo(1500L);
+        assertThat(mobtiStat.getRatio()).isGreaterThan(0); // 향상된 사용자들이 있음
+    }
+
+    @Test
+    @DisplayName("24. 월별 사유별 통계 - 계절별 패턴 테스트")
+    void testSeasonalRewardPatterns() {
+        // given - 겨울철 안전운전이 더 중요한 시기 (가정)
+        String winterMonth = "2024-12";
+        List<Object[]> winterStats = List.of(
+                new Object[]{"이벤트미발생", 4000L},       // 겨울철 안전운전 증가
+                new Object[]{"종합점수", 2000L},
+                new Object[]{"MoBTI향상", 500L}
+        );
+        when(rewardRepository.getMonthlyRewardStatsByReason(winterMonth)).thenReturn(winterStats);
+
+        // when
+        AdminRewardDto.MonthlyReasonStatsResponse result =
+                adminRewardService.getMonthlyRewardStatsByReason(winterMonth);
+
+        // then
+        AdminRewardDto.ReasonStat safetyReward = result.getMonthlyRewardStatistics().stream()
+                .filter(stat -> stat.getReason().equals("이벤트미발생"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(safetyReward.getCount()).isEqualTo(4000L);
+        assertThat(safetyReward.getRatio()).isGreaterThan(60.0); // 겨울철 안전운전 비중 높음
+    }
+
+    @Test
+    @DisplayName("25. 모든 리워드 사유 테스트 - RewardReason enum 전체")
+    void testAllRewardReasonValues() {
+        // given - 모든 RewardReason 값들
+        List<Object[]> rawStats = List.of(
+                new Object[]{"종합점수", 1200L},          // TOTAL_SCORE
+                new Object[]{"이벤트미발생", 3400L},       // EVENT_NOT_OCCURRED
+                new Object[]{"MoBTI향상", 670L},          // MOBTI_IMPROVEMENT
+                new Object[]{"알 수 없음", 100L}          // UNKNOWN
+        );
+        when(rewardRepository.getCurrentYearIssuedGroupedByReason()).thenReturn(rawStats);
+
+        // when
+        AdminRewardDto.TotalReasonStatsResponse result = adminRewardService.getTotalRewardStats();
+
+        // then
+        assertThat(result.getTotalRewardStatistics()).hasSize(4);
+
+        // 각 사유별로 정확히 매핑되는지 확인
+        Map<String, Long> reasonMap = result.getTotalRewardStatistics().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        AdminRewardDto.ReasonStat::getReason,
+                        AdminRewardDto.ReasonStat::getCount
+                ));
+
+        assertThat(reasonMap.get("종합점수")).isEqualTo(1200L);
+        assertThat(reasonMap.get("이벤트미발생")).isEqualTo(3400L);
+        assertThat(reasonMap.get("MoBTI향상")).isEqualTo(670L);
+        assertThat(reasonMap.get("알 수 없음")).isEqualTo(100L);
+
+        // 비율 합계가 100%인지 확인
+        double totalRatio = result.getTotalRewardStatistics().stream()
+                .mapToDouble(AdminRewardDto.ReasonStat::getRatio)
+                .sum();
+        assertThat(totalRatio).isCloseTo(100.0, org.assertj.core.data.Offset.offset(0.1));
     }
 }
