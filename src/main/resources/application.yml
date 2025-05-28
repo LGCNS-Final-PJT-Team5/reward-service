@@ -1,10 +1,7 @@
 spring:
-  application:
-    name: reward-service
   main:
     allow-bean-definition-overriding: true
 
-  # 기존 설정들 그대로 유지
   datasource:
     url: jdbc:mysql://localhost:3307
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -13,26 +10,17 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: create  # 테스트 후에는 update 또는 none 으로 변경 권장
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQL8Dialect
 
+  # 테스트에서 필요 시 콘솔도 설정 가능
   h2:
     console:
       enabled: false
 
 server:
   port: 8083
-
-# 👈 나중에 Eureka 사용할 때를 위해 미리 추가 (주석처리)
-# eureka:
-#   client:
-#     service-url:
-#       defaultZone: http://localhost:8761/eureka
-#     register-with-eureka: true
-#     fetch-registry: true
-#   instance:
-#     prefer-ip-address: true

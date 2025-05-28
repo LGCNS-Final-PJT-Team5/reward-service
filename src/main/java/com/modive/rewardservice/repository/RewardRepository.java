@@ -19,37 +19,42 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
     @Query("SELECT r FROM Reward r LEFT JOIN FETCH r.rewardBalance WHERE r.userId = :userId ORDER BY r.createdAt DESC")
     Page<Reward> findByUserIdOrderByCreatedAtDesc(@Param("userId") Long userId, Pageable pageable);
 
-    // 🔧 수정: Enum 직접 사용 - 상수로 하드코딩
-    @Query("SELECT COUNT(r) FROM Reward r WHERE r.type = com.modive.rewardservice.domain.RewardType.EARNED")
+    // 🎯 EARNED만 처리 - 간소화된 버전
+    @Query("SELECT COUNT(r) FROM Reward r WHERE r.type = 'EARNED'")
     long getTotalIssued();
 
-    @Query("SELECT COUNT(r) FROM Reward r WHERE r.type = com.modive.rewardservice.domain.RewardType.EARNED AND r.createdAt < :dateTime")
+    @Query("SELECT COUNT(r) FROM Reward r WHERE r.type = 'EARNED' AND r.createdAt < :dateTime")
     long countIssuedBefore(@Param("dateTime") LocalDateTime dateTime);
 
-    @Query("SELECT COUNT(r) FROM Reward r WHERE r.type = com.modive.rewardservice.domain.RewardType.EARNED AND r.createdAt >= :start AND r.createdAt <= :end")
+    @Query("SELECT COUNT(r) FROM Reward r WHERE r.type = 'EARNED' AND r.createdAt >= :start AND r.createdAt <= :end")
     long countIssuedBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
-    @Query("SELECT COUNT(DISTINCT r.userId) FROM Reward r WHERE r.type = com.modive.rewardservice.domain.RewardType.EARNED AND r.createdAt >= :start AND r.createdAt <= :end")
+    @Query("SELECT COUNT(DISTINCT r.userId) FROM Reward r WHERE r.type = 'EARNED' AND r.createdAt >= :start AND r.createdAt <= :end")
     long countDistinctUsersBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
-    @Query("SELECT r.description, COUNT(r) FROM Reward r WHERE r.type = com.modive.rewardservice.domain.RewardType.EARNED AND YEAR(r.createdAt) = YEAR(CURRENT_DATE) GROUP BY r.description")
+    @Query("SELECT r.description, COUNT(r) FROM Reward r WHERE r.type = 'EARNED' AND YEAR(r.createdAt) = YEAR(CURRENT_DATE) GROUP BY r.description")
     List<Object[]> getCurrentYearIssuedGroupedByReason();
 
     @Query("SELECT r.description, COUNT(r) " +
             "FROM Reward r " +
-            "WHERE FUNCTION('DATE_FORMAT', r.createdAt, '%Y-%m') = :month AND r.type = com.modive.rewardservice.domain.RewardType.EARNED " +
+            "WHERE FUNCTION('DATE_FORMAT', r.createdAt, '%Y-%m') = :month AND r.type = 'EARNED' " +
             "GROUP BY r.description")
     List<Object[]> getMonthlyRewardStatsByReason(@Param("month") String month);
 
-    // 🔧 수정: EARNED 조건 추가
-    @Query("SELECT YEAR(r.createdAt), MONTH(r.createdAt), SUM(r.amount) FROM Reward r WHERE r.type = com.modive.rewardservice.domain.RewardType.EARNED AND r.createdAt >= :startDate GROUP BY YEAR(r.createdAt), MONTH(r.createdAt) ORDER BY YEAR(r.createdAt), MONTH(r.createdAt)")
+    @Query("SELECT YEAR(r.createdAt), MONTH(r.createdAt), SUM(r.amount) FROM Reward r WHERE r.type = 'EARNED' AND r.createdAt >= :startDate GROUP BY YEAR(r.createdAt), MONTH(r.createdAt) ORDER BY YEAR(r.createdAt), MONTH(r.createdAt)")
     List<Object[]> findMonthlyIssuedStatsLast12Months(@Param("startDate") LocalDateTime startDate);
 
-    @Query("SELECT r FROM Reward r ORDER BY r.createdAt DESC")
+    // 🎯 관리자 전체 내역 - EARNED만 조회
+    @Query("SELECT r FROM Reward r WHERE r.type = 'EARNED' ORDER BY r.createdAt DESC")
     Page<Reward> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
-    // 기존 필터링 쿼리 (type 조건 없음 - 전체 조회용)
-    @Query("SELECT r FROM Reward r WHERE (:userId IS NULL OR r.userId = :userId) AND (:description IS NULL OR r.description LIKE %:description%) AND (:startDate IS NULL OR r.createdAt >= :startDate) AND (:endDate IS NULL OR r.createdAt <= :endDate)")
+    // 🎯 필터링 - EARNED만 조회
+    @Query("SELECT r FROM Reward r WHERE " +
+            "r.type = 'EARNED' AND " +
+            "(:userId IS NULL OR r.userId = :userId) AND " +
+            "(:description IS NULL OR r.description LIKE %:description%) AND " +
+            "(:startDate IS NULL OR r.createdAt >= :startDate) AND " +
+            "(:endDate IS NULL OR r.createdAt <= :endDate)")
     Page<Reward> filterRewards(
             @Param("userId") Long userId,
             @Param("description") String description,
@@ -58,8 +63,9 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
             Pageable pageable
     );
 
-    // 고급 검색 쿼리 (type 조건 없음 - 전체 조회용)
+    // 🎯 고급 검색 - EARNED만 조회
     @Query("SELECT r FROM Reward r WHERE " +
+            "r.type = 'EARNED' AND " +
             "(:userId IS NULL OR r.userId = :userId) AND " +
             "(:description IS NULL OR r.description LIKE %:description%) AND " +
             "(:startDate IS NULL OR r.createdAt >= :startDate) AND " +
@@ -78,11 +84,14 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
             Pageable pageable
     );
 
-    @Query("SELECT SUM(r.amount) FROM Reward r WHERE r.driveId = :driveId")
+    // 🎯 운전별 리워드 합계 - EARNED만
+    @Query("SELECT SUM(r.amount) FROM Reward r WHERE r.type = 'EARNED' AND r.driveId = :driveId")
     Optional<Integer> sumAmountByDriveId(@Param("driveId") Long driveId);
 
+    // 🎯 개수 조회 - EARNED만
     @Query("SELECT COUNT(r) FROM Reward r " +
-            "WHERE r.userId = :userId " +
+            "WHERE r.type = 'EARNED' AND " +
+            "r.userId = :userId " +
             "AND r.description LIKE :description " +
             "AND r.createdAt BETWEEN :start AND :end")
     long countByUserIdAndDescriptionLikeAndDateRange(

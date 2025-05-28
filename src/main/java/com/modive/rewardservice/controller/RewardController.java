@@ -32,16 +32,17 @@ public class RewardController {
     }
 
 
-    @GetMapping("/users/{userId}/balance")
-    public ResponseEntity<Response<RewardDto.BalanceResponse>> getBalance(@PathVariable Long userId) {
+    @GetMapping("/users/balance")
+    public ResponseEntity<Response<RewardDto.BalanceResponse>> getBalance() {
+        Long userId = UserIdInterceptor.getCurrentUserId();
         Long balance = rewardService.getBalance(userId);
         RewardDto.BalanceResponse data = RewardDto.BalanceResponse.of(userId, balance);
         return ResponseEntity.ok(Response.success(200, "씨앗 잔액 조회에 성공하였습니다.", data));
     }
 
-    @GetMapping("/users/{userId}/history")
-    public ResponseEntity<RewardDto.HistoryResponse> getRewardHistory(
-            @PathVariable Long userId, Pageable pageable) {
+    @GetMapping("/users/history")
+    public ResponseEntity<RewardDto.HistoryResponse> getRewardHistory(Pageable pageable) {
+        Long userId = UserIdInterceptor.getCurrentUserId();
         Page<Reward> page = rewardService.getRewardHistory(userId, pageable);
         return ResponseEntity.ok(RewardDto.HistoryResponse.of(page));
     }
