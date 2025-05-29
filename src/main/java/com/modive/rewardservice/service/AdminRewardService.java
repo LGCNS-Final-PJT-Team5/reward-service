@@ -36,18 +36,24 @@ public class AdminRewardService {
 
     @Transactional(readOnly = true)
     public double getChangeRate() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime oneMonthAgo = now.minusMonths(1);
-        long totalUntilOneMonthAgo = rewardRepository.countIssuedBefore(oneMonthAgo);
+        LocalDate today = LocalDate.now();
+        LocalDate yesterday = today.minusDays(1);
 
-        LocalDateTime twoMonthsAgo = now.minusMonths(2);
-        long totalUntilTwoMonthsAgo = rewardRepository.countIssuedBefore(twoMonthsAgo);
+        // 오늘 발급된 리워드 수
+        LocalDateTime todayStart = today.atStartOfDay();
+        LocalDateTime todayEnd = today.atTime(23, 59, 59);
+        long todayCount = rewardRepository.countIssuedBetween(todayStart, todayEnd);
 
-        if (totalUntilTwoMonthsAgo == 0) {
-            return totalUntilOneMonthAgo == 0 ? 0.0 : 100.0;
+        // 어제 발급된 리워드 수
+        LocalDateTime yesterdayStart = yesterday.atStartOfDay();
+        LocalDateTime yesterdayEnd = yesterday.atTime(23, 59, 59);
+        long yesterdayCount = rewardRepository.countIssuedBetween(yesterdayStart, yesterdayEnd);
+
+        if (yesterdayCount == 0) {
+            return todayCount == 0 ? 0.0 : 100.0;
         }
 
-        return Math.round(((double) (totalUntilOneMonthAgo - totalUntilTwoMonthsAgo) / totalUntilTwoMonthsAgo) * 1000) / 10.0;
+        return Math.round(((double) (todayCount - yesterdayCount) / yesterdayCount) * 1000) / 10.0;
     }
 
     @Transactional(readOnly = true)
