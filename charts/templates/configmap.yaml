@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-config
+  labels:
+    app: user-service
+    version: {{ .Chart.AppVersion | default "1.0" }}
+data:
+  application.yml: |
+    server:
+      port: {{ .Values.config.server.port | default 8080 }}
+
+    spring:
+      main:
+        allow-bean-definition-overriding: true
+      application:
+        name: {{ .Values.config.app.name | default "reward-service" }}
+      jpa:
+        hibernate:
+          ddl-auto: {{ .Values.config.jpa.hibernate.ddlauto | default "update" }}
+      datasource:
+        driver-class-name: {{ .Values.config.datasource.driverclassname | default "com.mysql.cj.jdbc.Driver"}}
+        url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: "*"

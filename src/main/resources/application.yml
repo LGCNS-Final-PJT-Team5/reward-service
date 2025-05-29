@@ -1,26 +1,3 @@
 spring:
-  main:
-    allow-bean-definition-overriding: true
-
-  datasource:
-    url: jdbc:mysql://localhost:3307
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    username: root
-    password:
-
-  jpa:
-    hibernate:
-      ddl-auto: create  # 테스트 후에는 update 또는 none 으로 변경 권장
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.MySQL8Dialect
-
-  # 테스트에서 필요 시 콘솔도 설정 가능
-  h2:
-    console:
-      enabled: false
-
-server:
-  port: 8083
+  application:
+    name: reward-service

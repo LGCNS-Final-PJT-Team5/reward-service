@@ -16,3 +16,14 @@ healthCheck:
   port: 8080
   initialDelaySeconds: 30
   periodSeconds: 10
+
+config:
+  server:
+    port: 8080
+  app:
+    name: reward-service
+  jpa:
+    hibernate:
+      ddlauto: update
+  datasource:
+    driverclassname: com.mysql.cj.jdbc.Driver

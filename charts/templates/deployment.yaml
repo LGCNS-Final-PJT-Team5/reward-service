@@ -24,6 +24,22 @@ spec:
           ports:
             - containerPort: 8080
 
+          # ConfigMap 마운트 추가
+          volumeMounts:
+            - mountPath: /app/config
+              name: config-volume
+              readOnly: true
+
+          # 환경변수 추가 (Spring Boot가 설정 파일을 찾을 수 있도록)
+          env:
+            - name: SPRING_CONFIG_LOCATION
+              value: "classpath:/application.yml,file:/app/config/application.yml"
+
+          # secret 불러오기
+          envFrom:
+            - secretRef:
+                name: reward-service-secrets
+
           # 헬스체크 추가
           {{- if .Values.healthCheck.enabled }}
           livenessProbe:
@@ -45,3 +61,7 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- end }}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ .Chart.Name }}-config
