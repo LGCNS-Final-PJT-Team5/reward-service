@@ -2,7 +2,7 @@ replicaCount: 0
 
 image:
   repository: 026274465258.dkr.ecr.ap-northeast-2.amazonaws.com/reward-service
-  tag: 20250526-acc824e
+  tag: 20250529-22c9c20
   pullPolicy: IfNotPresent    # 이미지 가져오는 정책 로컬에 없을 때만 pull
 
 service:
