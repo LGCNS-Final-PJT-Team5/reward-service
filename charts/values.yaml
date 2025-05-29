@@ -1,4 +1,4 @@
-replicaCount: 0
+replicaCount: 1
 
 image:
   repository: 026274465258.dkr.ecr.ap-northeast-2.amazonaws.com/reward-service
