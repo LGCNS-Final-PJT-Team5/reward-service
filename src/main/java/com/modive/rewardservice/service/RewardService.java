@@ -1,7 +1,5 @@
 package com.modive.rewardservice.service;
 
-import com.modive.rewardservice.domain.RewardBalance;
-import com.modive.rewardservice.domain.RewardType;
 import com.modive.rewardservice.domain.*;
 import com.modive.rewardservice.dto.request.RewardEarnRequest;
 import com.modive.rewardservice.dto.request.ScoreInfo;
@@ -31,7 +29,8 @@ public class RewardService {
 
         // ✅ 1. 주행 중 리워드 (주행 시간 >= 10분) - 제한 없음
         if (request.getDrivingTime() != null && request.getDrivingTime() >= 10) {
-            earn(userId, 1L, "주행 중 이벤트 미감지 보상");
+            // 🔧 수정: "주행 중 이벤트 미감지 보상" → "이벤트미발생"
+            earn(userId, 1L, RewardReason.EVENT_NOT_OCCURRED.getLabel());
         }
 
         // ✅ 2. 종합 점수 리워드 (score ≥ 50, 하루 최대 2회까지)
@@ -39,14 +38,16 @@ public class RewardService {
             LocalDateTime startOfDay = today.atStartOfDay();
             LocalDateTime endOfDay = today.atTime(23, 59, 59);
 
+            // 🔧 수정: "종합 점수 보상%" → "종합점수"
             long countToday = rewardRepository.countByUserIdAndDescriptionLikeAndDateRange(
-                    userId, "종합 점수 보상%", startOfDay, endOfDay
+                    userId, RewardReason.TOTAL_SCORE.getLabel() + "%", startOfDay, endOfDay
             );
 
             if (countToday < 2) {
                 long seed = calculateScoreReward(request.getScore());
                 if (seed > 0) {
-                    earn(userId, seed, "종합 점수 보상: " + request.getScore() + "점");
+                    // 🔧 수정: "종합 점수 보상: 85점" → "종합점수"
+                    earn(userId, seed, RewardReason.TOTAL_SCORE.getLabel());
                 }
             }
         }
@@ -59,16 +60,17 @@ public class RewardService {
             LocalDateTime startOfDay = today.atStartOfDay();
             LocalDateTime endOfDay = today.atTime(23, 59, 59);
 
+            // 🔧 수정: "MoBTI 향상 보상%" → "MoBTI향상"
             long mbtiCountToday = rewardRepository.countByUserIdAndDescriptionLikeAndDateRange(
-                    userId, "MoBTI 향상 보상%", startOfDay, endOfDay
+                    userId, RewardReason.MOBTI_IMPROVEMENT.getLabel() + "%", startOfDay, endOfDay
             );
 
             if (mbtiCountToday < 2) {
-                earn(userId, 5L, "MoBTI 향상 보상: " + lastMbti + " → " + currentMbti);
+                // 🔧 수정: "MoBTI 향상 보상: HAIU → EDSF" → "MoBTI향상"
+                earn(userId, 5L, RewardReason.MOBTI_IMPROVEMENT.getLabel());
             }
         }
     }
-
     /**
      * 종합 점수에 따른 씨앗 보상 계산
      */
