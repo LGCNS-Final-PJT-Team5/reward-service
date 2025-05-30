@@ -247,7 +247,7 @@ public class AdminRewardDto {
     @Getter
     @Builder
     public static class DriveReward {
-        private Long driveId;
+        private String driveId;
         private int rewards;
     }
 
@@ -257,7 +257,7 @@ public class AdminRewardDto {
     @AllArgsConstructor
     public static class RewardsByDriveRequest {
         @NotEmpty(message = "Drive IDs cannot be empty")
-        private List<Long> driveIds;
+        private List<String> driveIds;
     }
 
     // 🔧 개선: 이메일 입력, userId 출력 방식의 검색 요청 DTO

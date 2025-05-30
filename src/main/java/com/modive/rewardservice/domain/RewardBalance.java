@@ -24,7 +24,7 @@ public class RewardBalance {
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private Long userId;
+    private String userId;
 
     @Column(nullable = false)
     private Long balance = 0L;  // 기본값 설정
@@ -41,7 +41,7 @@ public class RewardBalance {
     private LocalDateTime updatedAt;
 
     @Builder
-    public RewardBalance(Long userId, Long balance) {
+    public RewardBalance(String userId, Long balance) {
         this.userId = userId;
         this.balance = balance != null ? balance : 0L;  // null 체크 추가
         this.version = 0L;

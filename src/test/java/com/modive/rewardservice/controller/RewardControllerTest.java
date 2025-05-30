@@ -44,7 +44,7 @@ class RewardControllerTest {
             mockedStatic.when(UserIdInterceptor::getCurrentUserId).thenReturn(1L);
 
             RewardDto.EarnComplexRequest request = RewardDto.EarnComplexRequest.builder()
-                    .driveId(123L)
+                    .driveId("1")
                     .score(85)
                     .drivingTime(12)
                     .lastScore(ScoreInfo.builder().carbon(40).safety(40).accident(40).focus(40).build())

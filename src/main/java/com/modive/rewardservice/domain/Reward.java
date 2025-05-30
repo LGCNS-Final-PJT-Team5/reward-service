@@ -22,7 +22,7 @@ public class Reward {
     private Long id;
 
     @Column(nullable = false)
-    private Long userId;
+    private String userId;
 
     @Column(nullable = false)
     private Long amount;
@@ -53,10 +53,10 @@ public class Reward {
     private LocalDateTime updatedAt;
 
     @Column(nullable = true)
-    private Long driveId;
+    private String driveId;
 
     @Builder
-    public Reward(Long userId, Long amount, RewardType type, String description, Long balanceSnapshot, RewardBalance rewardBalance, Long driveId) {
+    public Reward(String userId, Long amount, RewardType type, String description, Long balanceSnapshot, RewardBalance rewardBalance, String driveId) {
         this.userId = userId;
         this.amount = amount;
         this.type = type;

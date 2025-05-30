@@ -12,7 +12,7 @@ public interface UserClient {
      * @return 사용자 ID (없으면 null 또는 예외)
      */
     @GetMapping("/users/email")
-    Long getUserIdByEmail(@RequestParam("email") String email);
+    String getUserIdByEmail(@RequestParam("email") String email);
 
     // 🤔 아래 메서드들은 다른 서비스에서 사용 중인지 확인 후 제거 여부 결정
 
@@ -22,7 +22,7 @@ public interface UserClient {
      * @return 사용자 이메일
      */
     @GetMapping("/users/{userId}/email")
-    String getEmailByUserId(@PathVariable("userId") Long userId);
+    String getEmailByUserId(@PathVariable("userId") String userId);
 
     /**
      * 사용자 존재 여부 확인
@@ -30,5 +30,5 @@ public interface UserClient {
      * @return 존재 여부
      */
     @GetMapping("/users/{userId}/exists")
-    boolean existsById(@PathVariable("userId") Long userId);
+    boolean existsById(@PathVariable("userId") String userId);
 }

@@ -24,7 +24,7 @@ public class RewardService {
     /**씨앗적립처리**/
     @Transactional
     public void calculateAndEarn(RewardEarnRequest request) {
-        Long userId = request.getUserId();
+        String userId = request.getUserId();
         LocalDate today = LocalDate.now();
 
         // ✅ 1. 주행 중 리워드 (주행 시간 >= 10분) - 제한 없음
@@ -143,7 +143,7 @@ public class RewardService {
     /**
      * 씨앗 적립 처리
      */
-    private Reward earn(Long userId, Long amount, String description) {
+    private Reward earn(String userId, Long amount, String description) {
         RewardBalance rewardBalance = rewardBalanceRepository.findByUserId(userId)
                 .orElseGet(() -> RewardBalance.builder()
                         .userId(userId)
@@ -167,7 +167,7 @@ public class RewardService {
 
     /**사용자 현재 씨앗 잔액 조회**/
     @Transactional(readOnly = true)
-    public Long getBalance(Long userId) {
+    public Long getBalance(String userId) {
         return rewardBalanceRepository.findByUserId(userId)
                 .map(RewardBalance::getBalance)
                 .orElse(0L);
@@ -175,7 +175,7 @@ public class RewardService {
 
     /**사용자별 씨앗 적립 내역 페이징 조회**/
     @Transactional(readOnly = true)
-    public Page<Reward> getRewardHistory(Long userId, Pageable pageable) {
+    public Page<Reward> getRewardHistory(String userId, Pageable pageable) {
         return rewardRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
     }
 }
