@@ -36,7 +36,7 @@ class RewardServiceTest {
     @InjectMocks
     private RewardService rewardService;
 
-    private final Long userId = 1L;
+    private final String userId = "1";
     private final Long amount = 1000L;
     private final String description = "MoBTI 향상";
 

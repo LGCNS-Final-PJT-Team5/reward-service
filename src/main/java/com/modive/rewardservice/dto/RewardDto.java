@@ -22,7 +22,7 @@ public class RewardDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class EarnComplexRequest {
-        private Long driveId;
+        private String driveId;
         private Integer score;
 
         @JsonProperty("주행 시간")
@@ -32,7 +32,7 @@ public class RewardDto {
 
         private ScoreInfo currentScore;
 
-        public RewardEarnRequest toServiceRequest(Long userId) {
+        public RewardEarnRequest toServiceRequest(String userId) {
             return RewardEarnRequest.builder()
                     .userId(userId)
                     .driveId(driveId)
@@ -49,13 +49,13 @@ public class RewardDto {
     @Builder
     public static class Response {
         private Long id;
-        private Long userId;
+        private String userId;
         private Long amount;
         private RewardType type;
         private String description;
         private Long balanceSnapshot;
         private LocalDateTime createdAt;
-        private Long driveId;
+        private String driveId;
 
         public static Response from(Reward reward) {
             return Response.builder()
@@ -74,10 +74,10 @@ public class RewardDto {
     @Getter
     @Builder
     public static class BalanceResponse {
-        private Long userId;
+        private String userId;
         private Long balance;
 
-        public static BalanceResponse of(Long userId, Long balance) {
+        public static BalanceResponse of(String userId, Long balance) {
             return BalanceResponse.builder()
                     .userId(userId)
                     .balance(balance)

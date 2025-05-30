@@ -46,8 +46,8 @@ class AdminRewardServiceTest {
     @BeforeEach
     void setUp() {
         // 🔧 간소화된 UserClient Mock 설정
-        when(userClient.getUserIdByEmail(anyString())).thenReturn(1L);
-        when(userClient.getEmailByUserId(anyLong())).thenReturn("user@example.com");
+        when(userClient.getUserIdByEmail(anyString())).thenReturn("1");
+        when(userClient.getEmailByUserId(anyString())).thenReturn("user@example.com");
         // 🚫 제거: getEmailsByUserIds, existsByEmail, existsById
     }
 
@@ -370,24 +370,24 @@ class AdminRewardServiceTest {
     @DisplayName("9. 운전별 씨앗 적립 내역 조회")
     void getRewardsByDriveTest() {
         // given
-        List<Long> driveIds = List.of(1L, 2L, 3L, 4L);
+        List<String> driveIds = List.of("1", "2", "3", "4");
         AdminRewardDto.RewardsByDriveRequest request = new AdminRewardDto.RewardsByDriveRequest(driveIds);
 
-        when(rewardRepository.sumAmountByDriveId(1L)).thenReturn(Optional.of(100));
-        when(rewardRepository.sumAmountByDriveId(2L)).thenReturn(Optional.empty());
-        when(rewardRepository.sumAmountByDriveId(3L)).thenReturn(Optional.of(90));
-        when(rewardRepository.sumAmountByDriveId(4L)).thenReturn(Optional.of(80));
+        when(rewardRepository.sumAmountByDriveId("1")).thenReturn(Optional.of(100));
+        when(rewardRepository.sumAmountByDriveId("2")).thenReturn(Optional.empty());
+        when(rewardRepository.sumAmountByDriveId("3")).thenReturn(Optional.of(90));
+        when(rewardRepository.sumAmountByDriveId("4")).thenReturn(Optional.of(80));
 
         // when
         AdminRewardDto.RewardsByDriveResponse result = adminRewardService.getRewardsByDrive(request);
 
         // then
         assertThat(result.getRewardsByDrive()).hasSize(4);
-        assertThat(result.getRewardsByDrive().get(0).getDriveId()).isEqualTo(1L);
+        assertThat(result.getRewardsByDrive().get(0).getDriveId()).isEqualTo("1");
         assertThat(result.getRewardsByDrive().get(0).getRewards()).isEqualTo(100);
-        assertThat(result.getRewardsByDrive().get(1).getDriveId()).isEqualTo(2L);
+        assertThat(result.getRewardsByDrive().get(1).getDriveId()).isEqualTo("2");
         assertThat(result.getRewardsByDrive().get(1).getRewards()).isEqualTo(0);
-        assertThat(result.getRewardsByDrive().get(2).getDriveId()).isEqualTo(3L);
+        assertThat(result.getRewardsByDrive().get(2).getDriveId()).isEqualTo("3");
         assertThat(result.getRewardsByDrive().get(2).getRewards()).isEqualTo(90);
 
         verify(rewardRepository, times(4)).sumAmountByDriveId(any());

@@ -149,8 +149,8 @@ class AdminRewardControllerTest {
 
         // 운전별 리워드 Mock
         List<AdminRewardDto.DriveReward> driveRewards = List.of(
-                AdminRewardDto.DriveReward.builder().driveId(1L).rewards(100).build(),
-                AdminRewardDto.DriveReward.builder().driveId(2L).rewards(0).build()
+                AdminRewardDto.DriveReward.builder().driveId("1").rewards(100).build(),
+                AdminRewardDto.DriveReward.builder().driveId("2").rewards(0).build()
         );
         given(adminRewardService.getRewardsByDrive(any())).willReturn(
                 AdminRewardDto.RewardsByDriveResponse.of(driveRewards));
@@ -335,7 +335,7 @@ class AdminRewardControllerTest {
     @Test
     @DisplayName("9. POST /reward/by-drive - 운전별 씨앗 적립 내역 조회")
     void getRewardsByDrive() throws Exception {
-        AdminRewardDto.RewardsByDriveRequest request = new AdminRewardDto.RewardsByDriveRequest(List.of(1L, 2L, 3L, 4L));
+        AdminRewardDto.RewardsByDriveRequest request = new AdminRewardDto.RewardsByDriveRequest(List.of("1", "2", "3", "4"));
 
         mockMvc.perform(post("/reward/by-drive")
                         .header("X-USER-ID", USER_ID)

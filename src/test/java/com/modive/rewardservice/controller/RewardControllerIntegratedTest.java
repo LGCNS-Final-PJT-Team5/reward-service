@@ -47,7 +47,7 @@ class RewardControllerIntegratedTest {
             mockedStatic.when(UserIdInterceptor::getCurrentUserId).thenReturn(1L);
 
             RewardDto.EarnComplexRequest request = RewardDto.EarnComplexRequest.builder()
-                    .driveId(123L)
+                    .driveId("1")
                     .score(85)
                     .drivingTime(12)
                     .lastScore(ScoreInfo.builder().carbon(40).safety(40).accident(40).focus(40).build())
@@ -68,7 +68,7 @@ class RewardControllerIntegratedTest {
     @Test
     @DisplayName("GET /reward/users/{userId}/balance - 성공")
     void getBalanceSuccess() throws Exception {
-        Long userId = 1L;
+        String userId = 1L;
         given(rewardService.getBalance(userId)).willReturn(300L);
 
         mockMvc.perform(get("/reward/users/{userId}/balance", userId)
@@ -82,7 +82,7 @@ class RewardControllerIntegratedTest {
     @Test
     @DisplayName("GET /reward/users/{userId}/history - 성공")
     void getHistorySuccess() throws Exception {
-        Long userId = 1L;
+        String userId = "1";
         Pageable pageable = PageRequest.of(0, 10);
         Reward reward = Reward.builder()
                 .userId(userId)

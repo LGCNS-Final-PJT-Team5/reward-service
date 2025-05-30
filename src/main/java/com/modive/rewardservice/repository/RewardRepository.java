@@ -17,7 +17,7 @@ import java.util.Optional;
 public interface RewardRepository extends JpaRepository<Reward, Long> {
 
     @Query("SELECT r FROM Reward r LEFT JOIN FETCH r.rewardBalance WHERE r.userId = :userId ORDER BY r.createdAt DESC")
-    Page<Reward> findByUserIdOrderByCreatedAtDesc(@Param("userId") Long userId, Pageable pageable);
+    Page<Reward> findByUserIdOrderByCreatedAtDesc(@Param("userId") String userId, Pageable pageable);
 
     // 🎯 EARNED만 처리 - 간소화된 버전
     @Query("SELECT COUNT(r) FROM Reward r WHERE r.type = 'EARNED'")
@@ -56,7 +56,7 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
             "(:startDate IS NULL OR r.createdAt >= :startDate) AND " +
             "(:endDate IS NULL OR r.createdAt <= :endDate)")
     Page<Reward> filterRewards(
-            @Param("userId") Long userId,
+            @Param("userId") String userId,
             @Param("description") String description,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
@@ -74,7 +74,7 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
             "(:minAmount IS NULL OR r.amount >= :minAmount) AND " +
             "(:maxAmount IS NULL OR r.amount <= :maxAmount)")
     Page<Reward> searchRewards(
-            @Param("userId") Long userId,
+            @Param("userId") String userId,
             @Param("description") String description,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
@@ -86,7 +86,7 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
 
     // 🎯 운전별 리워드 합계 - EARNED만
     @Query("SELECT SUM(r.amount) FROM Reward r WHERE r.type = 'EARNED' AND r.driveId = :driveId")
-    Optional<Integer> sumAmountByDriveId(@Param("driveId") Long driveId);
+    Optional<Integer> sumAmountByDriveId(@Param("driveId") String driveId);
 
     // 🎯 개수 조회 - EARNED만
     @Query("SELECT COUNT(r) FROM Reward r " +
@@ -95,7 +95,7 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
             "AND r.description LIKE :description " +
             "AND r.createdAt BETWEEN :start AND :end")
     long countByUserIdAndDescriptionLikeAndDateRange(
-            @Param("userId") Long userId,
+            @Param("userId") String userId,
             @Param("description") String description,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
