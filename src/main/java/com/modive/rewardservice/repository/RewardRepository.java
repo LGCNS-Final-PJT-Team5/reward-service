@@ -1,7 +1,6 @@
 package com.modive.rewardservice.repository;
 
 import com.modive.rewardservice.domain.Reward;
-import com.modive.rewardservice.domain.RewardType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -85,7 +84,7 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
     );
 
     // 🎯 운전별 리워드 합계 - EARNED만
-    @Query("SELECT SUM(r.amount) FROM Reward r WHERE r.type = 'EARNED' AND r.driveId = :driveId")
+    @Query("SELECT COALESCE(SUM(r.amount), 0) FROM Reward r WHERE r.type = 'EARNED' AND r.driveId = :driveId")
     Optional<Integer> sumAmountByDriveId(@Param("driveId") String driveId);
 
     // 🎯 개수 조회 - EARNED만
