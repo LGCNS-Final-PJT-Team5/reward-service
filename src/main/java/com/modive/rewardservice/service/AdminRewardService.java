@@ -259,7 +259,7 @@ public class AdminRewardService {
             // 요청 검증
             request.validate();
 
-            Long userId = null;
+            String userId = null;
             if (request.getEmail() != null && !request.getEmail().isBlank()) {
                 userId = getUserIdByEmail(request.getEmail());
                 if (userId == null) {
@@ -303,7 +303,7 @@ public class AdminRewardService {
                 throw new IllegalArgumentException("시작일은 종료일보다 이전이어야 합니다.");
             }
 
-            Long userId = null;
+            String userId = null;
             if (email != null && !email.isBlank()) {
                 userId = getUserIdByEmail(email);
                 if (userId == null) {
@@ -363,7 +363,7 @@ public class AdminRewardService {
                     RewardReason reasonEnum = RewardReason.fromDescription(reward.getDescription());
                     return AdminRewardDto.FilteredReward.builder()
                             .rewardId("SEED_" + reward.getId())
-                            .userId(reward.getUserId().toString())  // 🔧 email → userId로 변경
+                            .userId(reward.getUserId())  // 🔧 email → userId로 변경
                             .createdAt(reward.getCreatedAt())
                             .description(reasonEnum.getLabel())
                             .amount(reward.getAmount().intValue())
@@ -373,7 +373,7 @@ public class AdminRewardService {
     }
 
     // 🔧 개선: 공통 사용자 조회 헬퍼 메서드 - 불필요한 중복 호출 제거
-    private Long getUserIdByEmail(String email) {
+    private String getUserIdByEmail(String email) {
         try {
             return userClient.getUserIdByEmail(email);  // 한 번만 호출
         } catch (Exception e) {
