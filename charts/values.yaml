@@ -27,3 +27,6 @@ config:
       ddlauto: update
   datasource:
     driverclassname: com.mysql.cj.jdbc.Driver
+  service:
+    user:
+      url: http://user-service.user-service.svc.cluster.local:80

@@ -3,7 +3,8 @@ package com.modive.rewardservice.client;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
-@FeignClient(name = "user-service", url = "http://localhost:8083")
+@FeignClient(name = "user-service",
+        url = "${service.user.url}")
 public interface UserClient {
 
     /**

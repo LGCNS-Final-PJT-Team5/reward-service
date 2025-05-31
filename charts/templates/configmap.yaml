@@ -28,3 +28,6 @@ data:
         web:
           exposure:
             include: "*"
+    service:
+      user:
+        url: {{ .Values.config.service.user.url | default "http://user-service.user-service.svc.cluster.loacl:80" }}
