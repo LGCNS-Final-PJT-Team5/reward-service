@@ -8,6 +8,7 @@ build/
 # 로컬 설정 파일 제외
 src/main/resources/application-local.yml
 src/main/resources/application-demo.yml
+src/test/resources/application-test.yml
 
 
 ### STS ###
