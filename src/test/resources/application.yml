@@ -1,11 +1,23 @@
-
 spring:
+  main:
+    allow-bean-definition-overriding: true
+  cloud:
+    config:
+      enabled: false
+    discovery:
+      enabled: false
+  cache:
+    type: none
+
   datasource:
     url: jdbc:mysql://localhost:3307
     username: root
     password:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+eureka:
+  client:
+    enabled: false
 
   jpa:
     hibernate:
