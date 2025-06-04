@@ -1,6 +1,7 @@
 package com.modive.rewardservice.controller;
 
 
+import com.modive.common.utils.JwtUtils;
 import com.modive.rewardservice.config.UserIdInterceptor;
 import com.modive.rewardservice.domain.Reward;
 import com.modive.rewardservice.dto.*;
@@ -21,12 +22,15 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class RewardController {
 
+    private final JwtUtils jwtUtils;
+
     private final RewardService rewardService;
 
     @PostMapping("/earn")
     public ResponseEntity<Void> earnComplexRewards(
             @Valid @RequestBody RewardDto.EarnComplexRequest request) {
-        String userId = UserIdInterceptor.getCurrentUserId();
+        //String userId = UserIdInterceptor.getCurrentUserId();
+        String userId = jwtUtils.getUserId();
         rewardService.calculateAndEarn(request.toServiceRequest(userId));
         return ResponseEntity.noContent().build();
     }
@@ -34,7 +38,8 @@ public class RewardController {
 
     @GetMapping("/users/balance")
     public ResponseEntity<Response<RewardDto.BalanceResponse>> getBalance() {
-        String userId = UserIdInterceptor.getCurrentUserId();
+        //String userId = UserIdInterceptor.getCurrentUserId();
+        String userId = jwtUtils.getUserId();
         Long balance = rewardService.getBalance(userId);
         RewardDto.BalanceResponse data = RewardDto.BalanceResponse.of(userId, balance);
         return ResponseEntity.ok(Response.success(200, "씨앗 잔액 조회에 성공하였습니다.", data));
@@ -42,7 +47,8 @@ public class RewardController {
 
     @GetMapping("/users/history")
     public ResponseEntity<RewardDto.HistoryResponse> getRewardHistory(Pageable pageable) {
-        String userId = UserIdInterceptor.getCurrentUserId();
+        //String userId = UserIdInterceptor.getCurrentUserId();
+        String userId = jwtUtils.getUserId();
         Page<Reward> page = rewardService.getRewardHistory(userId, pageable);
         return ResponseEntity.ok(RewardDto.HistoryResponse.of(page));
     }
