@@ -1,12 +1,16 @@
 package com.modive.rewardservice.service;
 
-import com.modive.rewardservice.client.UserClient;
-import com.modive.rewardservice.domain.Reward;
-import com.modive.rewardservice.domain.RewardReason;
-import com.modive.rewardservice.dto.*;
-import com.modive.rewardservice.repository.RewardRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.domain.Page;
@@ -15,10 +19,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
-import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.modive.rewardservice.client.UserClient;
+import com.modive.rewardservice.domain.Reward;
+import com.modive.rewardservice.domain.RewardReason;
+import com.modive.rewardservice.dto.AdminRewardDto;
+import com.modive.rewardservice.repository.RewardRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -249,48 +257,10 @@ public class AdminRewardService {
         }
     }
 
-    // 🔧 수정: 개선된 검색 메서드 - userId 기반으로 간소화
-    @Transactional(readOnly = true)
-    public AdminRewardDto.RewardFilterResponse searchRewards(
-            AdminRewardDto.RewardSearchRequest request,
-            Pageable pageable) {
-
-        try {
-            // 요청 검증
-            request.validate();
-
-            String userId = null;
-            if (request.getEmail() != null && !request.getEmail().isBlank()) {
-                userId = getUserIdByEmail(request.getEmail());
-                if (userId == null) {
-                    return AdminRewardDto.RewardFilterResponse.empty();
-                }
-            }
-
-            Page<Reward> page = rewardRepository.searchRewards(
-                    userId,
-                    request.getDescription(),
-                    request.getStartDate() != null ? request.getStartDate().atStartOfDay() : null,
-                    request.getEndDate() != null ? request.getEndDate().plusDays(1).atStartOfDay().minusNanos(1) : null,
-                    request.getReasons(),
-                    request.getMinAmount(),
-                    request.getMaxAmount(),
-                    pageable
-            );
-
-            // 🔧 개선: userId 직접 사용하여 간소화
-            List<AdminRewardDto.FilteredReward> result = mapToFilteredRewards(page.getContent());
-            return AdminRewardDto.RewardFilterResponse.of(result, page);
-
-        } catch (Exception e) {
-            log.error("Failed to search rewards", e);
-            throw new RuntimeException("리워드 검색에 실패했습니다.", e);
-        }
-    }
-
     // 🔧 수정: 필터링 메서드 - userId 기반으로 간소화
     @Transactional(readOnly = true)
     public AdminRewardDto.RewardFilterResponse filterRewards(
+            String userId,
             String email,
             String description,
             LocalDate startDate,
@@ -303,21 +273,12 @@ public class AdminRewardService {
                 throw new IllegalArgumentException("시작일은 종료일보다 이전이어야 합니다.");
             }
 
-            String userId = null;
-            if (email != null && !email.isBlank()) {
-                userId = getUserIdByEmail(email);
-                if (userId == null) {
-                    return AdminRewardDto.RewardFilterResponse.empty();
-                }
-            }
-
             Page<Reward> page = rewardRepository.filterRewards(
                     userId,
                     description,
                     startDate != null ? startDate.atStartOfDay() : null,
                     endDate != null ? endDate.plusDays(1).atStartOfDay().minusNanos(1) : null,
-                    pageable
-            );
+                    pageable);
 
             List<AdminRewardDto.FilteredReward> result = mapToFilteredRewards(page.getContent());
             return AdminRewardDto.RewardFilterResponse.of(result, page);
