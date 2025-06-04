@@ -1,19 +1,27 @@
 package com.modive.rewardservice.controller;
 
-import com.modive.common.Response;
-import com.modive.rewardservice.dto.AdminRewardDto;
-import com.modive.rewardservice.service.AdminRewardService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDate;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.modive.common.Response;
+import com.modive.rewardservice.dto.AdminRewardDto;
+import com.modive.rewardservice.service.AdminRewardService;
 
 import jakarta.validation.Valid;
-import java.time.LocalDate;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
@@ -129,14 +137,15 @@ public class AdminRewardController {
      */
     @GetMapping("/filter")
     public ResponseEntity<Response<AdminRewardDto.RewardFilterResponse>> filterRewardHistory(
-            @RequestParam(required = false) String email,
-            @RequestParam(required = false) String description,
-            @RequestParam(required = false) LocalDate startDate,
-            @RequestParam(required = false) LocalDate endDate,
+            @RequestHeader("X-USER-ID") String userId,
+            @RequestParam(value = "email", required = false) String email,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "startDate", required = false) LocalDate startDate,
+            @RequestParam(value = "endDate", required = false) LocalDate endDate,
             @PageableDefault(size = 10) Pageable pageable) {
 
         AdminRewardDto.RewardFilterResponse response = adminRewardService.filterRewards(
-                email, description, startDate, endDate, pageable);
+                userId, email, description, startDate, endDate, pageable);
 
         return ResponseEntity.ok(Response.success(200, "씨앗 발급 내역 검색에 성공했습니다.", response));
     }
