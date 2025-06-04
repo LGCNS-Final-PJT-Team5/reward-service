@@ -332,17 +332,6 @@ public class AdminRewardDto {
         private LocalDateTime createdAt;
         private String description;
         private int amount;
-
-        // 🔧 추가: 팩토리 메서드로 생성 간소화
-        public static FilteredReward from(Reward reward, RewardReason reasonEnum) {
-            return FilteredReward.builder()
-                    .rewardId("SEED_" + reward.getId())
-                    .userId(reward.getUserId().toString())
-                    .createdAt(reward.getCreatedAt())
-                    .description(reasonEnum.getLabel())
-                    .amount(reward.getAmount().intValue())
-                    .build();
-        }
     }
 
     // 에러 응답 DTO

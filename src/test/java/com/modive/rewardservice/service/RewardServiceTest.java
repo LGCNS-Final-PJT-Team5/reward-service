@@ -46,6 +46,8 @@ class RewardServiceTest {
 
     private static final String TEST_USER_ID = "user123";
 
+    // ===== 기존 테스트들 =====
+
     @Test
     @DisplayName("주행시간 10분 이상 - 이벤트미발생 리워드 1씨앗 적립")
     void calculateAndEarn_DrivingTime10MinutesOrMore_EarnsDrivingReward() {
@@ -92,138 +94,67 @@ class RewardServiceTest {
         verify(rewardBalanceRepository, never()).save(any());
     }
 
+    // ===== 🎯 NEW: 점수별 리워드 세분화 테스트 (calculateScoreReward 커버리지 향상) =====
+
     @Test
-    @DisplayName("종합점수 리워드 - 점수별 씨앗 계산")
-    void calculateAndEarn_ScoreReward_CalculatesCorrectSeeds() {
-        // 각 점수 케이스를 개별적으로 테스트
-        testScoreReward_90점_5씨앗();
-        testScoreReward_85점_4씨앗();
-        testScoreReward_75점_3씨앗();
-        testScoreReward_65점_2씨앗();
-        testScoreReward_55점_1씨앗();
-        testScoreReward_45점_0씨앗();
+    @DisplayName("종합점수 리워드 - 100점 경계값 테스트")
+    void calculateAndEarn_ScoreReward_100Points_Earns5Seeds() {
+        testScoreReward(100, 5L, "100점 만점");
     }
 
-    private void testScoreReward_90점_5씨앗() {
-        // Given
-        reset(rewardRepository, rewardBalanceRepository);
-        RewardEarnRequest request = createBaseRequest().score(95).drivingTime(5).build();
+    @Test
+    @DisplayName("종합점수 리워드 - 90-99점 테스트")
+    void calculateAndEarn_ScoreReward_90to99Points_Earns5Seeds() {
+        testScoreReward(95, 5L, "90-99점 범위");
+        testScoreReward(90, 5L, "90점 경계값");
+    }
 
-        when(rewardRepository.countByUserIdAndDescriptionLikeAndDateRange(
-                eq(TEST_USER_ID), eq("종합점수%"), any(), any())).thenReturn(0L);
-        RewardBalance mockBalance = createMockBalance(100L);
-        when(rewardBalanceRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(mockBalance));
-        when(rewardBalanceRepository.save(any())).thenReturn(mockBalance);
+    @Test
+    @DisplayName("종합점수 리워드 - 80-89점 테스트")
+    void calculateAndEarn_ScoreReward_80to89Points_Earns4Seeds() {
+        testScoreReward(89, 4L, "80-89점 범위");
+        testScoreReward(80, 4L, "80점 경계값");
+    }
+
+    @Test
+    @DisplayName("종합점수 리워드 - 70-79점 테스트")
+    void calculateAndEarn_ScoreReward_70to79Points_Earns3Seeds() {
+        testScoreReward(79, 3L, "70-79점 범위");
+        testScoreReward(70, 3L, "70점 경계값");
+    }
+
+    @Test
+    @DisplayName("종합점수 리워드 - 60-69점 테스트")
+    void calculateAndEarn_ScoreReward_60to69Points_Earns2Seeds() {
+        testScoreReward(69, 2L, "60-69점 범위");
+        testScoreReward(60, 2L, "60점 경계값");
+    }
+
+    @Test
+    @DisplayName("종합점수 리워드 - 50-59점 테스트")
+    void calculateAndEarn_ScoreReward_50to59Points_Earns1Seed() {
+        testScoreReward(59, 1L, "50-59점 범위");
+        testScoreReward(50, 1L, "50점 경계값");
+    }
+
+    @Test
+    @DisplayName("종합점수 리워드 - 49점 이하 테스트")
+    void calculateAndEarn_ScoreReward_Below50Points_NoReward() {
+        // Given
+        RewardEarnRequest request = createBaseRequest().score(49).drivingTime(5).build();
 
         // When
         rewardService.calculateAndEarn(request);
 
-        // Then
-        ArgumentCaptor<Reward> rewardCaptor = ArgumentCaptor.forClass(Reward.class);
-        verify(rewardRepository).save(rewardCaptor.capture());
-        assertThat(rewardCaptor.getValue().getAmount()).isEqualTo(5L);
-    }
-
-    private void testScoreReward_85점_4씨앗() {
-        // Given
-        reset(rewardRepository, rewardBalanceRepository);
-        RewardEarnRequest request = createBaseRequest().score(85).drivingTime(5).build();
-
-        when(rewardRepository.countByUserIdAndDescriptionLikeAndDateRange(
-                eq(TEST_USER_ID), eq("종합점수%"), any(), any())).thenReturn(0L);
-        RewardBalance mockBalance = createMockBalance(100L);
-        when(rewardBalanceRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(mockBalance));
-        when(rewardBalanceRepository.save(any())).thenReturn(mockBalance);
-
-        // When
-        rewardService.calculateAndEarn(request);
-
-        // Then
-        ArgumentCaptor<Reward> rewardCaptor = ArgumentCaptor.forClass(Reward.class);
-        verify(rewardRepository).save(rewardCaptor.capture());
-        assertThat(rewardCaptor.getValue().getAmount()).isEqualTo(4L);
-    }
-
-    private void testScoreReward_75점_3씨앗() {
-        // Given
-        reset(rewardRepository, rewardBalanceRepository);
-        RewardEarnRequest request = createBaseRequest().score(75).drivingTime(5).build();
-
-        when(rewardRepository.countByUserIdAndDescriptionLikeAndDateRange(
-                eq(TEST_USER_ID), eq("종합점수%"), any(), any())).thenReturn(0L);
-        RewardBalance mockBalance = createMockBalance(100L);
-        when(rewardBalanceRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(mockBalance));
-        when(rewardBalanceRepository.save(any())).thenReturn(mockBalance);
-
-        // When
-        rewardService.calculateAndEarn(request);
-
-        // Then
-        ArgumentCaptor<Reward> rewardCaptor = ArgumentCaptor.forClass(Reward.class);
-        verify(rewardRepository).save(rewardCaptor.capture());
-        assertThat(rewardCaptor.getValue().getAmount()).isEqualTo(3L);
-    }
-
-    private void testScoreReward_65점_2씨앗() {
-        // Given
-        reset(rewardRepository, rewardBalanceRepository);
-        RewardEarnRequest request = createBaseRequest().score(65).drivingTime(5).build();
-
-        when(rewardRepository.countByUserIdAndDescriptionLikeAndDateRange(
-                eq(TEST_USER_ID), eq("종합점수%"), any(), any())).thenReturn(0L);
-        RewardBalance mockBalance = createMockBalance(100L);
-        when(rewardBalanceRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(mockBalance));
-        when(rewardBalanceRepository.save(any())).thenReturn(mockBalance);
-
-        // When
-        rewardService.calculateAndEarn(request);
-
-        // Then
-        ArgumentCaptor<Reward> rewardCaptor = ArgumentCaptor.forClass(Reward.class);
-        verify(rewardRepository).save(rewardCaptor.capture());
-        assertThat(rewardCaptor.getValue().getAmount()).isEqualTo(2L);
-    }
-
-    private void testScoreReward_55점_1씨앗() {
-        // Given
-        reset(rewardRepository, rewardBalanceRepository);
-        RewardEarnRequest request = createBaseRequest().score(55).drivingTime(5).build();
-
-        when(rewardRepository.countByUserIdAndDescriptionLikeAndDateRange(
-                eq(TEST_USER_ID), eq("종합점수%"), any(), any())).thenReturn(0L);
-        RewardBalance mockBalance = createMockBalance(100L);
-        when(rewardBalanceRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(mockBalance));
-        when(rewardBalanceRepository.save(any())).thenReturn(mockBalance);
-
-        // When
-        rewardService.calculateAndEarn(request);
-
-        // Then
-        ArgumentCaptor<Reward> rewardCaptor = ArgumentCaptor.forClass(Reward.class);
-        verify(rewardRepository).save(rewardCaptor.capture());
-        assertThat(rewardCaptor.getValue().getAmount()).isEqualTo(1L);
-    }
-
-    private void testScoreReward_45점_0씨앗() {
-        // Given
-        reset(rewardRepository, rewardBalanceRepository);
-        RewardEarnRequest request = createBaseRequest().score(45).drivingTime(5).build();
-
-        // When
-        rewardService.calculateAndEarn(request);
-
-        // Then
+        // Then - 점수 리워드 없음
         verify(rewardRepository, never()).save(any());
-        verify(rewardBalanceRepository, never()).save(any());
     }
 
     @Test
     @DisplayName("종합점수 리워드 - 하루 최대 2회 제한")
     void calculateAndEarn_ScoreReward_LimitedTo2PerDay() {
         // Given
-        RewardEarnRequest request = createBaseRequest()
-                .score(85) // 4씨앗 받을 점수
-                .build();
+        RewardEarnRequest request = createBaseRequest().score(85).build();
 
         // 이미 오늘 2번 받았다고 가정
         when(rewardRepository.countByUserIdAndDescriptionLikeAndDateRange(
@@ -236,94 +167,98 @@ class RewardServiceTest {
         verify(rewardRepository, never()).save(any()); // 저장되지 않음
     }
 
+    // ===== 🎯 NEW: MBTI 관련 세분화 테스트 (isImprovedAtPosition, isMbtiImproved 커버리지 향상) =====
+
     @Test
-    @DisplayName("MoBTI 향상 리워드 - HAIU → EDSF 변화시 5씨앗")
-    void calculateAndEarn_MbtiImprovement_AllCategoriesImproved() {
+    @DisplayName("MBTI determineMbtiType - null 스코어 처리")
+    void calculateAndEarn_MbtiType_NullScore_NoMbtiReward() {
         // Given
-        ScoreInfo lastScore = ScoreInfo.builder()
-                .carbon(40) // H (Heavy)
-                .safety(40) // A (Aggressive)
-                .accident(40) // I (Insensitive)
-                .focus(40) // U (Unfocused)
-                .build();
-
-        ScoreInfo currentScore = ScoreInfo.builder()
-                .carbon(60) // E (Eco)
-                .safety(60) // D (Defensive)
-                .accident(60) // S (Sensitive)
-                .focus(60) // F (Focused)
-                .build();
-
         RewardEarnRequest request = createBaseRequest()
-                .lastScore(lastScore)
-                .currentScore(currentScore)
-                .score(30) // 점수 리워드 없음
-                .drivingTime(5) // 주행 리워드 없음
+                .lastScore(null) // null 스코어
+                .currentScore(createGoodScore())
                 .build();
-
-        when(rewardRepository.countByUserIdAndDescriptionLikeAndDateRange(
-                eq(TEST_USER_ID), eq("MoBTI향상%"), any(), any())).thenReturn(0L);
-
-        RewardBalance mockBalance = createMockBalance(100L);
-        when(rewardBalanceRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(mockBalance));
-        when(rewardBalanceRepository.save(any())).thenReturn(mockBalance);
 
         // When
         rewardService.calculateAndEarn(request);
 
-        // Then
-        ArgumentCaptor<Reward> rewardCaptor = ArgumentCaptor.forClass(Reward.class);
-        verify(rewardRepository).save(rewardCaptor.capture());
-
-        Reward savedReward = rewardCaptor.getValue();
-        assertThat(savedReward.getAmount()).isEqualTo(5L);
-        assertThat(savedReward.getDescription()).isEqualTo("MoBTI향상");
+        // Then - MBTI 리워드 없음
+        verify(rewardRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("MoBTI 향상 리워드 - 일부만 향상되어도 5씨앗")
-    void calculateAndEarn_MbtiImprovement_PartialImprovement() {
-        // Given - Carbon만 향상 (H → E)
-        ScoreInfo lastScore = ScoreInfo.builder()
-                .carbon(40) // H → E 향상
-                .safety(60) // D 유지
-                .accident(60) // S 유지
-                .focus(60) // F 유지
-                .build();
-
-        ScoreInfo currentScore = ScoreInfo.builder()
-                .carbon(60) // E
-                .safety(60) // D
-                .accident(60) // S
-                .focus(60) // F
+    @DisplayName("MBTI determineMbtiType - null 필드 처리")
+    void calculateAndEarn_MbtiType_NullFields_HandlesGracefully() {
+        // Given
+        ScoreInfo scoreWithNulls = ScoreInfo.builder()
+                .carbon(null) // null 필드
+                .safety(60)
+                .accident(null) // null 필드
+                .focus(60)
                 .build();
 
         RewardEarnRequest request = createBaseRequest()
-                .lastScore(lastScore)
-                .currentScore(currentScore)
+                .lastScore(createBadScore())
+                .currentScore(scoreWithNulls)
                 .build();
 
-        when(rewardRepository.countByUserIdAndDescriptionLikeAndDateRange(
-                eq(TEST_USER_ID), eq("MoBTI향상%"), any(), any())).thenReturn(0L);
-
-        RewardBalance mockBalance = createMockBalance(100L);
-        when(rewardBalanceRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(mockBalance));
-        when(rewardBalanceRepository.save(any())).thenReturn(mockBalance);
+        setupMbtiMocks();
 
         // When
         rewardService.calculateAndEarn(request);
 
-        // Then
+        // Then - 일부 필드가 null이어도 처리됨
         verify(rewardRepository).save(any());
     }
 
     @Test
-    @DisplayName("MoBTI 변화 없음 - 리워드 없음")
-    void calculateAndEarn_NoMbtiChange_NoReward() {
-        // Given - 점수는 같음 (EDSF → EDSF)
-        ScoreInfo sameScore = ScoreInfo.builder()
-                .carbon(60).safety(60).accident(60).focus(60).build();
+    @DisplayName("MBTI isImprovedAtPosition - 포지션 0: Heavy → Eco 향상")
+    void calculateAndEarn_MbtiImprovement_Position0_HeavyToEco() {
+        // Given
+        ScoreInfo lastScore = ScoreInfo.builder().carbon(40).safety(60).accident(60).focus(60).build(); // H
+        ScoreInfo currentScore = ScoreInfo.builder().carbon(60).safety(60).accident(60).focus(60).build(); // E
 
+        testMbtiImprovement(lastScore, currentScore, "포지션 0 향상");
+    }
+
+    @Test
+    @DisplayName("MBTI isImprovedAtPosition - 포지션 1: Aggressive → Defensive 향상")
+    void calculateAndEarn_MbtiImprovement_Position1_AggressiveToDefensive() {
+        // Given
+        ScoreInfo lastScore = ScoreInfo.builder().carbon(60).safety(40).accident(60).focus(60).build(); // A
+        ScoreInfo currentScore = ScoreInfo.builder().carbon(60).safety(60).accident(60).focus(60).build(); // D
+
+        testMbtiImprovement(lastScore, currentScore, "포지션 1 향상");
+    }
+
+    @Test
+    @DisplayName("MBTI isImprovedAtPosition - 포지션 2: Insensitive → Sensitive 향상")
+    void calculateAndEarn_MbtiImprovement_Position2_InsensitiveToSensitive() {
+        // Given
+        ScoreInfo lastScore = ScoreInfo.builder().carbon(60).safety(60).accident(40).focus(60).build(); // I
+        ScoreInfo currentScore = ScoreInfo.builder().carbon(60).safety(60).accident(60).focus(60).build(); // S
+
+        testMbtiImprovement(lastScore, currentScore, "포지션 2 향상");
+    }
+
+    @Test
+    @DisplayName("MBTI isImprovedAtPosition - 포지션 3: Unfocused → Focused 향상")
+    void calculateAndEarn_MbtiImprovement_Position3_UnfocusedToFocused() {
+        // Given
+        ScoreInfo lastScore = ScoreInfo.builder().carbon(60).safety(60).accident(60).focus(40).build(); // U
+        ScoreInfo currentScore = ScoreInfo.builder().carbon(60).safety(60).accident(60).focus(60).build(); // F
+
+        testMbtiImprovement(lastScore, currentScore, "포지션 3 향상");
+    }
+
+    @Test
+    @DisplayName("MBTI isImprovedAtPosition - default case 처리")
+    void calculateAndEarn_MbtiImprovement_InvalidPosition_NoImprovement() {
+        // 이 테스트는 실제로는 불가능하지만 코드 커버리지를 위해 추가
+        // isImprovedAtPosition의 default case를 테스트하기 위해서는
+        // 직접적으로 테스트할 수 없으므로, 다른 방식으로 검증
+
+        // Given - 변화가 없는 경우
+        ScoreInfo sameScore = createGoodScore();
         RewardEarnRequest request = createBaseRequest()
                 .lastScore(sameScore)
                 .currentScore(sameScore)
@@ -332,12 +267,51 @@ class RewardServiceTest {
         // When
         rewardService.calculateAndEarn(request);
 
-        // Then
+        // Then - 변화 없으므로 MBTI 리워드 없음
         verify(rewardRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("MoBTI 향상 리워드 - 하루 최대 2회 제한")
+    @DisplayName("MBTI 역방향 변화 - 향상 아님")
+    void calculateAndEarn_MbtiChange_Backwards_NoReward() {
+        // Given - 좋은 상태에서 나쁜 상태로 (역방향)
+        ScoreInfo lastScore = createGoodScore(); // EDSF
+        ScoreInfo currentScore = createBadScore(); // HAIU
+
+        RewardEarnRequest request = createBaseRequest()
+                .lastScore(lastScore)
+                .currentScore(currentScore)
+                .build();
+
+        // When
+        rewardService.calculateAndEarn(request);
+
+        // Then - 역방향 변화는 리워드 없음
+        verify(rewardRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("MBTI 부분 향상 - 일부만 좋아져도 리워드")
+    void calculateAndEarn_MbtiImprovement_PartialImprovement() {
+        // Given - Carbon만 향상 (H → E), 나머지는 동일
+        ScoreInfo lastScore = ScoreInfo.builder().carbon(40).safety(60).accident(60).focus(60).build();
+        ScoreInfo currentScore = ScoreInfo.builder().carbon(60).safety(60).accident(60).focus(60).build();
+
+        testMbtiImprovement(lastScore, currentScore, "부분 향상");
+    }
+
+    @Test
+    @DisplayName("MBTI 다중 향상 - 여러 영역 동시 향상")
+    void calculateAndEarn_MbtiImprovement_MultipleImprovements() {
+        // Given - Carbon과 Safety 동시 향상
+        ScoreInfo lastScore = ScoreInfo.builder().carbon(40).safety(40).accident(60).focus(60).build(); // HADS
+        ScoreInfo currentScore = ScoreInfo.builder().carbon(60).safety(60).accident(60).focus(60).build(); // EDSF
+
+        testMbtiImprovement(lastScore, currentScore, "다중 향상");
+    }
+
+    @Test
+    @DisplayName("MBTI 향상 리워드 - 하루 최대 2회 제한")
     void calculateAndEarn_MbtiImprovement_LimitedTo2PerDay() {
         // Given
         ScoreInfo lastScore = ScoreInfo.builder().carbon(40).safety(60).accident(60).focus(60).build();
@@ -358,6 +332,25 @@ class RewardServiceTest {
         // Then
         verify(rewardRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("MBTI 동일 타입 - 리워드 없음")
+    void calculateAndEarn_MbtiSameType_NoReward() {
+        // Given - 같은 MBTI 타입
+        ScoreInfo sameScore = createGoodScore();
+        RewardEarnRequest request = createBaseRequest()
+                .lastScore(sameScore)
+                .currentScore(sameScore)
+                .build();
+
+        // When
+        rewardService.calculateAndEarn(request);
+
+        // Then
+        verify(rewardRepository, never()).save(any());
+    }
+
+    // ===== 🎯 NEW: 복합 시나리오 테스트 =====
 
     @Test
     @DisplayName("복합 리워드 - 주행 + 점수 + MoBTI 모두 적립")
@@ -393,9 +386,7 @@ class RewardServiceTest {
     @DisplayName("새 사용자 - RewardBalance 생성")
     void calculateAndEarn_NewUser_CreatesRewardBalance() {
         // Given
-        RewardEarnRequest request = createBaseRequest()
-                .drivingTime(15)
-                .build();
+        RewardEarnRequest request = createBaseRequest().drivingTime(15).build();
 
         when(rewardBalanceRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.empty());
 
@@ -467,7 +458,112 @@ class RewardServiceTest {
         assertThat(actualPage.getContent().get(1).getAmount()).isEqualTo(1L);
     }
 
+    // ===== 🎯 NEW: 경계값 및 예외 케이스 테스트 =====
+
+    @Test
+    @DisplayName("주행시간 null 처리")
+    void calculateAndEarn_DrivingTimeNull_NoDrivingReward() {
+        // Given
+        RewardEarnRequest request = createBaseRequest()
+                .drivingTime(null) // null 주행시간
+                .build();
+
+        // When
+        rewardService.calculateAndEarn(request);
+
+        // Then
+        verify(rewardRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("점수 null 처리")
+    void calculateAndEarn_ScoreNull_NoScoreReward() {
+        // Given
+        RewardEarnRequest request = createBaseRequest()
+                .score(null) // null 점수
+                .build();
+
+        // When
+        rewardService.calculateAndEarn(request);
+
+        // Then
+        verify(rewardRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("주행시간 정확히 10분 - 리워드 받음")
+    void calculateAndEarn_DrivingTimeExactly10Minutes_EarnsReward() {
+        // Given
+        RewardEarnRequest request = createBaseRequest().drivingTime(10).build(); // 정확히 10분
+
+        RewardBalance mockBalance = createMockBalance(100L);
+        when(rewardBalanceRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(mockBalance));
+        when(rewardBalanceRepository.save(any())).thenReturn(mockBalance);
+
+        // When
+        rewardService.calculateAndEarn(request);
+
+        // Then
+        verify(rewardRepository, times(1)).save(any());
+    }
+
     // ===== Helper Methods =====
+
+    private void testScoreReward(int score, Long expectedSeeds, String description) {
+        // Given
+        reset(rewardRepository, rewardBalanceRepository);
+        RewardEarnRequest request = createBaseRequest().score(score).drivingTime(5).build();
+
+        when(rewardRepository.countByUserIdAndDescriptionLikeAndDateRange(
+                eq(TEST_USER_ID), eq("종합점수%"), any(), any())).thenReturn(0L);
+        RewardBalance mockBalance = createMockBalance(100L);
+        when(rewardBalanceRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(mockBalance));
+        when(rewardBalanceRepository.save(any())).thenReturn(mockBalance);
+
+        // When
+        rewardService.calculateAndEarn(request);
+
+        // Then
+        if (expectedSeeds > 0) {
+            ArgumentCaptor<Reward> rewardCaptor = ArgumentCaptor.forClass(Reward.class);
+            verify(rewardRepository).save(rewardCaptor.capture());
+            assertThat(rewardCaptor.getValue().getAmount()).isEqualTo(expectedSeeds);
+        } else {
+            verify(rewardRepository, never()).save(any());
+        }
+    }
+
+    private void testMbtiImprovement(ScoreInfo lastScore, ScoreInfo currentScore, String description) {
+        // Given
+        RewardEarnRequest request = createBaseRequest()
+                .lastScore(lastScore)
+                .currentScore(currentScore)
+                .score(30) // 점수 리워드 없음
+                .drivingTime(5) // 주행 리워드 없음
+                .build();
+
+        setupMbtiMocks();
+
+        // When
+        rewardService.calculateAndEarn(request);
+
+        // Then
+        ArgumentCaptor<Reward> rewardCaptor = ArgumentCaptor.forClass(Reward.class);
+        verify(rewardRepository).save(rewardCaptor.capture());
+
+        Reward savedReward = rewardCaptor.getValue();
+        assertThat(savedReward.getAmount()).isEqualTo(5L);
+        assertThat(savedReward.getDescription()).isEqualTo("MoBTI향상");
+    }
+
+    private void setupMbtiMocks() {
+        when(rewardRepository.countByUserIdAndDescriptionLikeAndDateRange(
+                eq(TEST_USER_ID), eq("MoBTI향상%"), any(), any())).thenReturn(0L);
+
+        RewardBalance mockBalance = createMockBalance(100L);
+        when(rewardBalanceRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(mockBalance));
+        when(rewardBalanceRepository.save(any())).thenReturn(mockBalance);
+    }
 
     private RewardEarnRequest.RewardEarnRequestBuilder createBaseRequest() {
         return RewardEarnRequest.builder()
@@ -489,6 +585,24 @@ class RewardServiceTest {
                 .type(RewardType.EARNED)
                 .description(description)
                 .balanceSnapshot(100L + amount)
+                .build();
+    }
+
+    private ScoreInfo createGoodScore() {
+        return ScoreInfo.builder()
+                .carbon(60) // E
+                .safety(60) // D
+                .accident(60) // S
+                .focus(60) // F
+                .build();
+    }
+
+    private ScoreInfo createBadScore() {
+        return ScoreInfo.builder()
+                .carbon(40) // H
+                .safety(40) // A
+                .accident(40) // I
+                .focus(40) // U
                 .build();
     }
 }

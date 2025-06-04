@@ -1,6 +1,5 @@
 package com.modive.rewardservice.service;
 
-import com.modive.rewardservice.client.UserClient;
 import com.modive.rewardservice.domain.Reward;
 import com.modive.rewardservice.domain.RewardReason;
 import com.modive.rewardservice.domain.RewardType;
@@ -17,25 +16,18 @@ import org.springframework.data.domain.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AdminRewardServiceTest {
 
     @Mock
     private RewardRepository rewardRepository;
-
-    @Mock
-    private UserClient userClient;
 
     @InjectMocks
     private AdminRewardService adminRewardService;
@@ -48,9 +40,9 @@ class AdminRewardServiceTest {
         now = LocalDateTime.now();
         sampleReward = Reward.builder()
                 .userId("test-user-id")
-                .amount(100L)  // Long 타입으로 수정
-                .type(RewardType.EARNED)  // RewardType 추가
-                .description("종합점수")  // RewardReason의 실제 label로 수정
+                .amount(100L)
+                .type(RewardType.EARNED)
+                .description("종합점수")
                 .balanceSnapshot(1000L)
                 .driveId("drive-123")
                 .build();
@@ -233,9 +225,9 @@ class AdminRewardServiceTest {
     @DisplayName("11. 총 사유별 통계 조회 성공")
     void getTotalRewardStats_Success() {
         // given
-        Object[] stat1 = {"종합점수", 800L};  // RewardReason.TOTAL_SCORE.getLabel()
-        Object[] stat2 = {"이벤트미발생", 400L};  // RewardReason.EVENT_NOT_OCCURRED.getLabel()
-        Object[] stat3 = {"MoBTI향상", 350L};  // RewardReason.MOBTI_IMPROVEMENT.getLabel()
+        Object[] stat1 = {"종합점수", 800L};
+        Object[] stat2 = {"이벤트미발생", 400L};
+        Object[] stat3 = {"MoBTI향상", 350L};
         List<Object[]> mockStats = Arrays.<Object[]>asList(stat1, stat2, stat3);
         given(rewardRepository.getCurrentYearIssuedGroupedByReason()).willReturn(mockStats);
 
@@ -307,10 +299,15 @@ class AdminRewardServiceTest {
     @Test
     @DisplayName("15. 월별 리워드 트렌드 조회 성공")
     void getMonthlyRewardTrends_Success() {
-        // given - 현재 월(2025년 5월) 기준으로 지난 12개월 범위 내의 데이터 제공
-        Object[] trend1 = {2024, 6, 12500};   // 2024년 6월 (11개월 전)
-        Object[] trend2 = {2024, 7, 13200};   // 2024년 7월 (10개월 전)
-        Object[] trend3 = {2025, 1, 14100};   // 2025년 1월 (4개월 전)
+        // given - 현재 시간 기준으로 동적으로 테스트 데이터 생성
+        java.time.YearMonth currentMonth = java.time.YearMonth.now();
+        java.time.YearMonth threeMonthsAgo = currentMonth.minusMonths(3);
+        java.time.YearMonth sixMonthsAgo = currentMonth.minusMonths(6);
+        java.time.YearMonth nineMonthsAgo = currentMonth.minusMonths(9);
+
+        Object[] trend1 = {threeMonthsAgo.getYear(), threeMonthsAgo.getMonthValue(), 12500};
+        Object[] trend2 = {sixMonthsAgo.getYear(), sixMonthsAgo.getMonthValue(), 13200};
+        Object[] trend3 = {nineMonthsAgo.getYear(), nineMonthsAgo.getMonthValue(), 14100};
         List<Object[]> mockTrends = Arrays.<Object[]>asList(trend1, trend2, trend3);
         given(rewardRepository.findMonthlyIssuedStatsLast12Months(any(LocalDateTime.class)))
                 .willReturn(mockTrends);
@@ -321,23 +318,26 @@ class AdminRewardServiceTest {
         // then
         assertThat(result.getMonthlyRewardStatistics()).hasSize(12); // 항상 12개월 데이터
 
-        // 실제 데이터가 있는 월들 확인
         List<AdminRewardDto.MonthlyRewardStat> stats = result.getMonthlyRewardStatistics();
 
-        // 2024년 6월 데이터 확인
-        boolean hasJune2024 = stats.stream()
-                .anyMatch(s -> s.getYear() == 2024 && s.getMonth() == 6 && s.getAmount() == 12500);
-        assertThat(hasJune2024).isTrue();
+        // 실제 데이터가 있는 월들 확인
+        boolean hasThreeMonthsAgo = stats.stream()
+                .anyMatch(s -> s.getYear() == threeMonthsAgo.getYear()
+                        && s.getMonth() == threeMonthsAgo.getMonthValue()
+                        && s.getAmount() == 12500);
+        assertThat(hasThreeMonthsAgo).isTrue();
 
-        // 2024년 7월 데이터 확인
-        boolean hasJuly2024 = stats.stream()
-                .anyMatch(s -> s.getYear() == 2024 && s.getMonth() == 7 && s.getAmount() == 13200);
-        assertThat(hasJuly2024).isTrue();
+        boolean hasSixMonthsAgo = stats.stream()
+                .anyMatch(s -> s.getYear() == sixMonthsAgo.getYear()
+                        && s.getMonth() == sixMonthsAgo.getMonthValue()
+                        && s.getAmount() == 13200);
+        assertThat(hasSixMonthsAgo).isTrue();
 
-        // 2025년 1월 데이터 확인
-        boolean hasJan2025 = stats.stream()
-                .anyMatch(s -> s.getYear() == 2025 && s.getMonth() == 1 && s.getAmount() == 14100);
-        assertThat(hasJan2025).isTrue();
+        boolean hasNineMonthsAgo = stats.stream()
+                .anyMatch(s -> s.getYear() == nineMonthsAgo.getYear()
+                        && s.getMonth() == nineMonthsAgo.getMonthValue()
+                        && s.getAmount() == 14100);
+        assertThat(hasNineMonthsAgo).isTrue();
 
         // 데이터가 없는 월은 amount가 0이어야 함
         long zeroAmountCount = stats.stream()
@@ -345,12 +345,17 @@ class AdminRewardServiceTest {
                 .count();
         assertThat(zeroAmountCount).isEqualTo(9); // 12개월 중 3개월만 데이터가 있으므로 9개월은 0
 
-        // 전체 12개월이 현재 월 기준으로 올바르게 생성되었는지 확인
-        // 2024년 6월부터 2025년 5월까지의 연속된 12개월이어야 함
-        boolean hasConsecutiveMonths = stats.stream()
-                .anyMatch(s -> s.getYear() == 2024 && s.getMonth() == 6) &&
-                stats.stream().anyMatch(s -> s.getYear() == 2025 && s.getMonth() == 5);
-        assertThat(hasConsecutiveMonths).isTrue();
+        // 연속된 12개월이 생성되었는지 확인 (11개월 전부터 현재 월까지)
+        java.time.YearMonth elevenMonthsAgo = currentMonth.minusMonths(11);
+        boolean hasOldestMonth = stats.stream()
+                .anyMatch(s -> s.getYear() == elevenMonthsAgo.getYear()
+                        && s.getMonth() == elevenMonthsAgo.getMonthValue());
+        assertThat(hasOldestMonth).isTrue();
+
+        boolean hasCurrentMonth = stats.stream()
+                .anyMatch(s -> s.getYear() == currentMonth.getYear()
+                        && s.getMonth() == currentMonth.getMonthValue());
+        assertThat(hasCurrentMonth).isTrue();
     }
 
     @Test
@@ -406,20 +411,18 @@ class AdminRewardServiceTest {
                 .hasMessage("리워드 내역 조회에 실패했습니다.");
     }
 
-    // ===== 필터링 조회 테스트 =====
+    // ===== 필터링 조회 테스트 - 수정된 메서드 시그니처에 맞춤 =====
 
     @Test
-    @DisplayName("19. 리워드 필터링 조회 성공")
+    @DisplayName("19. 리워드 필터링 조회 성공 - userId 직접 사용")
     void filterRewards_Success() {
         // given
+        String userId = "test-user-id";
         String email = "test@example.com";
         String description = "종합점수";
         LocalDate startDate = LocalDate.of(2025, 4, 1);
         LocalDate endDate = LocalDate.of(2025, 4, 30);
         Pageable pageable = PageRequest.of(0, 10);
-
-        String userId = "test-user-id";
-        given(userClient.getUserIdByEmail(email)).willReturn(userId);
 
         List<Reward> rewards = Arrays.<Reward>asList(sampleReward);
         Page<Reward> rewardPage = new PageImpl<>(rewards, pageable, 1);
@@ -427,9 +430,9 @@ class AdminRewardServiceTest {
                 eq(userId), eq(description), any(LocalDateTime.class), any(LocalDateTime.class), eq(pageable)))
                 .willReturn(rewardPage);
 
-        // when
+        // when - 새로운 시그니처: userId를 첫 번째 파라미터로 전달
         AdminRewardDto.RewardFilterResponse result = adminRewardService.filterRewards(
-                email, description, startDate, endDate, pageable);
+                userId, email, description, startDate, endDate, pageable);
 
         // then
         assertThat(result.getSearchResult()).hasSize(1);
@@ -445,39 +448,22 @@ class AdminRewardServiceTest {
     @DisplayName("20. 리워드 필터링 조회 - 잘못된 날짜 범위")
     void filterRewards_InvalidDateRange() {
         // given
+        String userId = "test-user-id";
         LocalDate startDate = LocalDate.of(2025, 4, 30);
         LocalDate endDate = LocalDate.of(2025, 4, 1); // 시작일이 종료일보다 늦음
         Pageable pageable = PageRequest.of(0, 10);
 
         // when & then - 실제 Service는 try-catch로 IllegalArgumentException을 RuntimeException으로 감쌈
         assertThatThrownBy(() -> adminRewardService.filterRewards(
-                null, null, startDate, endDate, pageable))
+                userId, null, null, startDate, endDate, pageable))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("리워드 필터링에 실패했습니다.")
                 .hasCause(new IllegalArgumentException("시작일은 종료일보다 이전이어야 합니다."));
     }
 
     @Test
-    @DisplayName("21. 리워드 필터링 조회 - 존재하지 않는 사용자")
-    void filterRewards_UserNotFound() {
-        // given
-        String email = "nonexistent@example.com";
-        Pageable pageable = PageRequest.of(0, 10);
-
-        given(userClient.getUserIdByEmail(email)).willThrow(new RuntimeException("User not found"));
-
-        // when
-        AdminRewardDto.RewardFilterResponse result = adminRewardService.filterRewards(
-                email, null, null, null, pageable);
-
-        // then
-        assertThat(result.getSearchResult()).isEmpty();
-        assertThat(result.getPageInfo().getTotalElements()).isEqualTo(0);
-    }
-
-    @Test
-    @DisplayName("22. 리워드 필터링 조회 - email이 null인 경우")
-    void filterRewards_NullEmail() {
+    @DisplayName("21. 리워드 필터링 조회 - userId가 null인 경우")
+    void filterRewards_NullUserId() {
         // given
         Pageable pageable = PageRequest.of(0, 10);
 
@@ -488,10 +474,30 @@ class AdminRewardServiceTest {
 
         // when
         AdminRewardDto.RewardFilterResponse result = adminRewardService.filterRewards(
-                null, null, null, null, pageable);
+                null, null, null, null, null, pageable);
 
         // then
         assertThat(result.getSearchResult()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("22. 리워드 필터링 조회 - 빈 결과")
+    void filterRewards_EmptyResult() {
+        // given
+        String userId = "test-user-id";
+        Pageable pageable = PageRequest.of(0, 10);
+
+        Page<Reward> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
+        given(rewardRepository.filterRewards(eq(userId), isNull(), isNull(), isNull(), eq(pageable)))
+                .willReturn(emptyPage);
+
+        // when
+        AdminRewardDto.RewardFilterResponse result = adminRewardService.filterRewards(
+                userId, null, null, null, null, pageable);
+
+        // then
+        assertThat(result.getSearchResult()).isEmpty();
+        assertThat(result.getPageInfo().getTotalElements()).isEqualTo(0);
     }
 
     // ===== 운전별 리워드 조회 테스트 =====
@@ -553,41 +559,17 @@ class AdminRewardServiceTest {
     // ===== 기타 헬퍼 메서드 테스트 =====
 
     @Test
-    @DisplayName("26. 사용자 이메일로 ID 조회 성공")
-    void getUserIdByEmail_Success() {
-        // given
-        String email = "test@example.com";
-        String expectedUserId = "test-user-id";
-        given(userClient.getUserIdByEmail(email)).willReturn(expectedUserId);
-
-        // Repository Mock도 설정해야 함 (filterRewards 메서드에서 사용)
-        List<Reward> rewards = Arrays.<Reward>asList(sampleReward);
-        Page<Reward> rewardPage = new PageImpl<>(rewards, PageRequest.of(0, 10), 1);
-        given(rewardRepository.filterRewards(
-                eq(expectedUserId), isNull(), isNull(), isNull(), any(Pageable.class)))
-                .willReturn(rewardPage);
-
-        // when - private 메서드이므로 실제 사용되는 곳에서 테스트
-        AdminRewardDto.RewardFilterResponse result = adminRewardService.filterRewards(
-                email, null, null, null, PageRequest.of(0, 10));
-
-        // then
-        verify(userClient).getUserIdByEmail(email);
-        assertThat(result.getSearchResult()).hasSize(1);
-        assertThat(result.getSearchResult().get(0).getUserId()).isEqualTo(expectedUserId);
-    }
-
-    @Test
-    @DisplayName("27. 빈 리워드 리스트 매핑 테스트")
+    @DisplayName("26. 빈 리워드 리스트 매핑 테스트")
     void mapToFilteredRewards_EmptyList() {
         // given - 빈 페이지
+        String userId = "test-user-id";
         Page<Reward> emptyPage = new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 10), 0);
-        given(rewardRepository.filterRewards(isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
+        given(rewardRepository.filterRewards(eq(userId), isNull(), isNull(), isNull(), any(Pageable.class)))
                 .willReturn(emptyPage);
 
         // when
         AdminRewardDto.RewardFilterResponse result = adminRewardService.filterRewards(
-                null, null, null, null, PageRequest.of(0, 10));
+                userId, null, null, null, null, PageRequest.of(0, 10));
 
         // then
         assertThat(result.getSearchResult()).isEmpty();
@@ -596,7 +578,7 @@ class AdminRewardServiceTest {
 
     // ===== RewardReason enum 매핑 테스트 =====
     @Test
-    @DisplayName("28. RewardReason enum 매핑 테스트")
+    @DisplayName("27. RewardReason enum 매핑 테스트")
     void rewardReasonMapping_Test() {
         // given & when & then
         assertThat(RewardReason.fromDescription("종합점수")).isEqualTo(RewardReason.TOTAL_SCORE);
@@ -607,5 +589,204 @@ class AdminRewardServiceTest {
         assertThat(RewardReason.TOTAL_SCORE.getLabel()).isEqualTo("종합점수");
         assertThat(RewardReason.EVENT_NOT_OCCURRED.getLabel()).isEqualTo("이벤트미발생");
         assertThat(RewardReason.MOBTI_IMPROVEMENT.getLabel()).isEqualTo("MoBTI향상");
+    }
+
+    // ===== 추가 테스트 케이스 =====
+
+    @Test
+    @DisplayName("28. 필터링 조회 - 모든 파라미터 사용")
+    void filterRewards_WithAllParameters() {
+        // given
+        String userId = "test-user-id";
+        String email = "test@example.com";
+        String description = "종합점수";
+        LocalDate startDate = LocalDate.of(2025, 4, 1);
+        LocalDate endDate = LocalDate.of(2025, 4, 30);
+        Pageable pageable = PageRequest.of(0, 10);
+
+        List<Reward> rewards = Arrays.<Reward>asList(sampleReward);
+        Page<Reward> rewardPage = new PageImpl<>(rewards, pageable, 1);
+        given(rewardRepository.filterRewards(
+                eq(userId), eq(description), any(LocalDateTime.class), any(LocalDateTime.class), eq(pageable)))
+                .willReturn(rewardPage);
+
+        // when
+        AdminRewardDto.RewardFilterResponse result = adminRewardService.filterRewards(
+                userId, email, description, startDate, endDate, pageable);
+
+        // then
+        assertThat(result.getSearchResult()).hasSize(1);
+        assertThat(result.getPageInfo().getTotalElements()).isEqualTo(1);
+
+        AdminRewardDto.FilteredReward filteredReward = result.getSearchResult().get(0);
+        assertThat(filteredReward.getRewardId()).isEqualTo("SEED_1");
+        assertThat(filteredReward.getUserId()).isEqualTo(userId);
+        assertThat(filteredReward.getDescription()).isEqualTo("종합점수");
+        assertThat(filteredReward.getAmount()).isEqualTo(100);
+        assertThat(filteredReward.getCreatedAt()).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("29. 필터링 조회 - startDate만 있는 경우")
+    void filterRewards_OnlyStartDate() {
+        // given
+        String userId = "test-user-id";
+        LocalDate startDate = LocalDate.of(2025, 4, 1);
+        Pageable pageable = PageRequest.of(0, 10);
+
+        List<Reward> rewards = Arrays.<Reward>asList(sampleReward);
+        Page<Reward> rewardPage = new PageImpl<>(rewards, pageable, 1);
+        given(rewardRepository.filterRewards(
+                eq(userId), isNull(), any(LocalDateTime.class), isNull(), eq(pageable)))
+                .willReturn(rewardPage);
+
+        // when
+        AdminRewardDto.RewardFilterResponse result = adminRewardService.filterRewards(
+                userId, null, null, startDate, null, pageable);
+
+        // then
+        assertThat(result.getSearchResult()).hasSize(1);
+        verify(rewardRepository).filterRewards(
+                eq(userId), isNull(), any(LocalDateTime.class), isNull(), eq(pageable));
+    }
+
+    @Test
+    @DisplayName("30. 필터링 조회 - endDate만 있는 경우")
+    void filterRewards_OnlyEndDate() {
+        // given
+        String userId = "test-user-id";
+        LocalDate endDate = LocalDate.of(2025, 4, 30);
+        Pageable pageable = PageRequest.of(0, 10);
+
+        List<Reward> rewards = Arrays.<Reward>asList(sampleReward);
+        Page<Reward> rewardPage = new PageImpl<>(rewards, pageable, 1);
+        given(rewardRepository.filterRewards(
+                eq(userId), isNull(), isNull(), any(LocalDateTime.class), eq(pageable)))
+                .willReturn(rewardPage);
+
+        // when
+        AdminRewardDto.RewardFilterResponse result = adminRewardService.filterRewards(
+                userId, null, null, null, endDate, pageable);
+
+        // then
+        assertThat(result.getSearchResult()).hasSize(1);
+        verify(rewardRepository).filterRewards(
+                eq(userId), isNull(), isNull(), any(LocalDateTime.class), eq(pageable));
+    }
+
+    @Test
+    @DisplayName("31. 필터링 조회 - description만 있는 경우")
+    void filterRewards_OnlyDescription() {
+        // given
+        String userId = "test-user-id";
+        String description = "종합점수";
+        Pageable pageable = PageRequest.of(0, 10);
+
+        List<Reward> rewards = Arrays.<Reward>asList(sampleReward);
+        Page<Reward> rewardPage = new PageImpl<>(rewards, pageable, 1);
+        given(rewardRepository.filterRewards(
+                eq(userId), eq(description), isNull(), isNull(), eq(pageable)))
+                .willReturn(rewardPage);
+
+        // when
+        AdminRewardDto.RewardFilterResponse result = adminRewardService.filterRewards(
+                userId, null, description, null, null, pageable);
+
+        // then
+        assertThat(result.getSearchResult()).hasSize(1);
+        AdminRewardDto.FilteredReward filteredReward = result.getSearchResult().get(0);
+        assertThat(filteredReward.getDescription()).isEqualTo("종합점수");
+    }
+
+    @Test
+    @DisplayName("32. 필터링 조회 - Repository 예외 발생")
+    void filterRewards_RepositoryException() {
+        // given
+        String userId = "test-user-id";
+        Pageable pageable = PageRequest.of(0, 10);
+
+        given(rewardRepository.filterRewards(
+                eq(userId), isNull(), isNull(), isNull(), eq(pageable)))
+                .willThrow(new RuntimeException("Database connection failed"));
+
+        // when & then
+        assertThatThrownBy(() -> adminRewardService.filterRewards(
+                userId, null, null, null, null, pageable))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("리워드 필터링에 실패했습니다.")
+                .hasCauseInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("33. 통계 조회 - 일평균 변화율 계산")
+    void getDailyAverageChangeRate_Success() {
+        // given
+        given(rewardRepository.countIssuedBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
+                .willReturn(160L) // 오늘
+                .willReturn(150L); // 어제
+
+        // when
+        double result = adminRewardService.getDailyAverageChangeRate();
+
+        // then
+        assertThat(result).isEqualTo(6.7); // (160-150)/150 * 100 = 6.67% -> 반올림 6.7%
+    }
+
+    @Test
+    @DisplayName("34. 필터링 조회 - 대량 데이터")
+    void filterRewards_LargeDataSet() {
+        // given
+        String userId = "test-user-id";
+        Pageable pageable = PageRequest.of(0, 100);
+
+        // 대량 데이터 시뮬레이션
+        List<Reward> largeRewardList = new ArrayList<>();
+        for (int i = 1; i <= 50; i++) {
+            Reward reward = Reward.builder()
+                    .userId("user-" + i)
+                    .amount((long) (i * 10))
+                    .type(RewardType.EARNED)
+                    .description("종합점수")
+                    .balanceSnapshot(1000L + i)
+                    .driveId("drive-" + i)
+                    .build();
+
+            // Reflection으로 ID와 createdAt 설정
+            try {
+                java.lang.reflect.Field idField = Reward.class.getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(reward, (long) i);
+
+                java.lang.reflect.Field createdAtField = Reward.class.getDeclaredField("createdAt");
+                createdAtField.setAccessible(true);
+                createdAtField.set(reward, now.plusMinutes(i));
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to set test fields", e);
+            }
+
+            largeRewardList.add(reward);
+        }
+
+        Page<Reward> largePage = new PageImpl<>(largeRewardList, pageable, 50);
+        given(rewardRepository.filterRewards(
+                eq(userId), isNull(), isNull(), isNull(), eq(pageable)))
+                .willReturn(largePage);
+
+        // when
+        AdminRewardDto.RewardFilterResponse result = adminRewardService.filterRewards(
+                userId, null, null, null, null, pageable);
+
+        // then
+        assertThat(result.getSearchResult()).hasSize(50);
+        assertThat(result.getPageInfo().getTotalElements()).isEqualTo(50);
+
+        // 첫 번째와 마지막 요소 검증
+        AdminRewardDto.FilteredReward firstReward = result.getSearchResult().get(0);
+        assertThat(firstReward.getRewardId()).isEqualTo("SEED_1");
+        assertThat(firstReward.getAmount()).isEqualTo(10);
+
+        AdminRewardDto.FilteredReward lastReward = result.getSearchResult().get(49);
+        assertThat(lastReward.getRewardId()).isEqualTo("SEED_50");
+        assertThat(lastReward.getAmount()).isEqualTo(500);
     }
 }
