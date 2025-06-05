@@ -9,5 +9,5 @@ import java.util.Optional;
 
 public interface RewardBalanceRepository extends JpaRepository<RewardBalance, Long> {
     @Lock(LockModeType.OPTIMISTIC)
-    Optional<RewardBalance> findByUserId(Long userId);
+    Optional<RewardBalance> findByUserId(String userId);
 }

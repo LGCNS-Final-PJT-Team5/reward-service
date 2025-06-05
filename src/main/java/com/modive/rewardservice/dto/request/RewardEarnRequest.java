@@ -12,8 +12,8 @@ import com.modive.rewardservice.dto.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class RewardEarnRequest {
-    private Long userId;
-    private Long driveId;
+    private String userId;
+    private String driveId;
     private Integer score;
     private Integer drivingTime;
 

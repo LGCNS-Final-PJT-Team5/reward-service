@@ -16,9 +16,9 @@ public class MockUserController {
     }
 
     @GetMapping("/{userId}/email")
-    public String getEmailByUserId(@PathVariable Long userId) {
-        if (userId == 1L) return "user1@example.com";
-        else if (userId == 2L) return "user2@example.com";
+    public String getEmailByUserId(@PathVariable String userId) {
+        if (userId == "1L") return "user1@example.com";
+        else if (userId == "2L") return "user2@example.com";
         return "unknown@example.com";
     }
 }
