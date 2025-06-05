@@ -23,6 +23,9 @@ data:
         url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}
         username: ${DB_USERNAME}
         password: ${DB_PASSWORD}
+    h2:
+      console:
+        enabled: false
     management:
       endpoints:
         web:
