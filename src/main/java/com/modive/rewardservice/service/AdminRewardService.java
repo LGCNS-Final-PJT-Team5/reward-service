@@ -324,9 +324,9 @@ public class AdminRewardService {
                     RewardReason reasonEnum = RewardReason.fromDescription(reward.getDescription());
                     return AdminRewardDto.FilteredReward.builder()
                             .rewardId("SEED_" + reward.getId())
-                            .userId(reward.getUserId())  // 🔧 email → userId로 변경
-                            .createdAt(reward.getCreatedAt())
-                            .description(reasonEnum.getLabel())
+                            .userId(reward.getUserId()) // 🔧 email → userId로 변경
+                            .issuedDate(reward.getCreatedAt())
+                            .reason(reasonEnum.getLabel())
                             .amount(reward.getAmount().intValue())
                             .build();
                 })

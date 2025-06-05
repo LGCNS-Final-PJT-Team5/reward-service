@@ -328,10 +328,21 @@ public class AdminRewardDto {
     @Builder
     public static class FilteredReward {
         private String rewardId;
-        private String userId;  // 🔧 핵심: email → userId로 변경하여 MSA 경계 명확화
-        private LocalDateTime createdAt;
-        private String description;
+        private String userId; // 🔧 핵심: email → userId로 변경하여 MSA 경계 명확화
+        private LocalDateTime issuedDate;
+        private String reason;
         private int amount;
+
+        // 🔧 추가: 팩토리 메서드로 생성 간소화
+        public static FilteredReward from(Reward reward, RewardReason reasonEnum) {
+            return FilteredReward.builder()
+                    .rewardId("SEED_" + reward.getId())
+                    .userId(reward.getUserId().toString())
+                    .issuedDate(reward.getCreatedAt())
+                    .reason(reasonEnum.getLabel())
+                    .amount(reward.getAmount().intValue())
+                    .build();
+        }
     }
 
     // 에러 응답 DTO
