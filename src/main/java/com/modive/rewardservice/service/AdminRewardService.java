@@ -332,14 +332,4 @@ public class AdminRewardService {
                 })
                 .toList();
     }
-
-    // 🔧 개선: 공통 사용자 조회 헬퍼 메서드 - 불필요한 중복 호출 제거
-    private String getUserIdByEmail(String email) {
-        try {
-            return userClient.getUserIdByEmail(email);  // 한 번만 호출
-        } catch (Exception e) {
-            log.warn("User not found for email: {}", email);
-            return null;
-        }
-    }
 }
