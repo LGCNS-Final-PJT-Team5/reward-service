@@ -31,6 +31,15 @@ data:
         web:
           exposure:
             include: "*"
+      endpoint:
+        health:
+          show-details: always
+        prometheus:
+          enabled: true
+      metrics:
+        export:
+          prometheus:
+            enabled: true
     service:
       user:
         url: {{ .Values.config.service.user.url | default "http://user-service.user-service.svc.cluster.loacl:80" }}
