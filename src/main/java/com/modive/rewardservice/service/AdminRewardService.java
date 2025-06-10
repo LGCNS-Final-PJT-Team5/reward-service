@@ -246,6 +246,7 @@ public class AdminRewardService {
                 RewardReason reasonEnum = RewardReason.fromDescription(reward.getDescription());
                 return AdminRewardDto.AllRewardHistoryResponse.RewardHistoryItem.builder()
                         .rewardId("SEED_" + reward.getId())
+                        .userId(reward.getUserId())
                         .issuedDate(reward.getCreatedAt().toLocalDate())
                         .reason(reasonEnum.getLabel())
                         .amount(reward.getAmount().intValue())

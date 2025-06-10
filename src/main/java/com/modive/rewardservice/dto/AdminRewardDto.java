@@ -206,6 +206,7 @@ public class AdminRewardDto {
         @Builder
         public static class RewardHistoryItem {
             private String rewardId;
+            private String userId;
             private LocalDate issuedDate;
             private String reason;
             private int amount;
