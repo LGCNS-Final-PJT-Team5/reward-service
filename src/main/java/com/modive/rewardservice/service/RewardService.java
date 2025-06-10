@@ -28,7 +28,7 @@ public class RewardService {
         LocalDate today = LocalDate.now();
 
         // ✅ 1. 주행 중 리워드 (주행 시간 >= 10분) - 제한 없음
-        if (request.getDrivingTime() != null && request.getDrivingTime() >= 10) {
+        if (request.getDrivingTime() != null && request.getDrivingTime() >= 0) {
             // 🔧 수정: "주행 중 이벤트 미감지 보상" → "이벤트미발생"
             earn(userId, 1L, RewardReason.EVENT_NOT_OCCURRED.getLabel());
         }
@@ -43,7 +43,7 @@ public class RewardService {
                     userId, RewardReason.TOTAL_SCORE.getLabel() + "%", startOfDay, endOfDay
             );
 
-            if (countToday < 2) {
+            if (countToday < 200) {
                 long seed = calculateScoreReward(request.getScore());
                 if (seed > 0) {
                     // 🔧 수정: "종합 점수 보상: 85점" → "종합점수"
@@ -65,7 +65,7 @@ public class RewardService {
                     userId, RewardReason.MOBTI_IMPROVEMENT.getLabel() + "%", startOfDay, endOfDay
             );
 
-            if (mbtiCountToday < 2) {
+            if (mbtiCountToday < 200) {
                 // 🔧 수정: "MoBTI 향상 보상: HAIU → EDSF" → "MoBTI향상"
                 earn(userId, 5L, RewardReason.MOBTI_IMPROVEMENT.getLabel());
             }
